@@ -1,0 +1,8 @@
+# Uncomment for ignoring all files without an extension 
+
+# *
+# !/**/
+# !*.*
+
+.vscode
+CESC_Emu
