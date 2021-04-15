@@ -28,12 +28,12 @@ word CPU::ALU_result(byte funct, word A, word B) {
         true_result = ~true_result; // borrow is the opposite of carry
         break;
     case 0b110: // addc
-        result = A+B + C;
-        true_result = uint32_t(A) + uint32_t(B) + uint32_t(C);
+        result = A+B + Flags.C;
+        true_result = uint32_t(A) + uint32_t(B) + uint32_t(Flags.C);
         break;
     case 0b111: // subb
-        result = A-B - C;
-        true_result = uint32_t(A) - uint32_t(B) - uint32_t(C);
+        result = A-B - Flags.C;
+        true_result = uint32_t(A) - uint32_t(B) - uint32_t(Flags.C);
         true_result = ~true_result; // borrow is the opposite of carry
         break;
     default:
@@ -41,13 +41,14 @@ word CPU::ALU_result(byte funct, word A, word B) {
         exit(EXIT_FAILURE);
     }
 
-    Z = not result;
-    C = bool(true_result & 0x10000);
-    V = (A&MSB == B&MSB) and (A&MSB != result&MSB);
-    N = bool(result&MSB);
+    // Set flags
+    Flags.Z = not result;
+    Flags.C = bool(true_result & 0x10000);
+    Flags.V = (A&MSB == B&MSB) and (A&MSB != result&MSB);
+    Flags.N = bool(result&MSB);
 
     // todo: remove assert
-    assert(V == (A&MSB and B&MSB and not result&MSB) or (not A&MSB and not B&MSB and result&MSB));
+    assert(Flags.V == (A&MSB and B&MSB and not result&MSB) or (not A&MSB and not B&MSB and result&MSB));
 
     return result;
 }
@@ -101,9 +102,31 @@ int CPU::exec_ALU_m_op(word opcode) {
 
 // Execute an ALU operation (destination in memory). Returns the used cycles
 int CPU::exec_ALU_m_dest(word opcode) {
-    byte rD = extract_bitfield(opcode, 7, 4);
+    byte addr_mode = extract_bitfield(opcode, 12, 11);
+    byte funct = extract_bitfield(opcode, 10, 8);
     byte rA = extract_bitfield(opcode, 3, 0);
-    return 1;
+
+    word argument = user_mode ? ram[PC] : rom_h[PC];
+    int cycles = 4;
+
+    if (addr_mode == 0b00) {
+        // Direct addressing: OP [imm], rA
+        ram[argument] = ALU_result(funct, ram[argument], regs[rA]);
+    }
+    else if (addr_mode == 0b01) {
+        // Indirect addressing: OP [rA], rB
+        byte rB = extract_bitfield(argument, 3, 0);
+        ram[regs[rA]] = ALU_result(funct, ram[regs[rA]], regs[rB]);
+    }
+    else {
+        // Indexed addressing: OP rD, [rA+imm]
+        byte rB = extract_bitfield(opcode, 7, 4);
+        word address = regs[rA] + argument;
+        ram[address] = ALU_result(funct, ram[address], regs[rA]);
+        cycles = 5;
+    }
+
+    return cycles;
 }
 
 // Execute a bit shift. Returns the used cycles
@@ -124,15 +147,15 @@ int CPU::exec_SHFT(word opcode) {
 
     case 0b10: // srl
         result = uint16_t(regs[rA]) >> shamt;
-        Z = not result;
-        N = bool(result&MSB);
+        Flags.Z = not result;
+        Flags.N = bool(result&MSB);
         // V and C are undefined
         break;
 
     case 0b11: // sra
         result = int16_t(regs[rA]) >> shamt;
-        Z = not result;
-        N = bool(result&MSB);
+        Flags.Z = not result;
+        Flags.N = bool(result&MSB);
         // V and C are undefined
         break;
     
@@ -164,7 +187,8 @@ int CPU::exec_CALL(word opcode) {
 
 // Called whenever the CPU attempts to execute an illegal opcode
 void CPU::ILLEGAL_OP(word opcode) {
-    printf("Instruction opcode 0x%X not handled!\n", opcode);
+    printf("\n");
+    printf("Instruction 0x%X not handled!\n", opcode);
     exit(EXIT_FAILURE);
 }
 
@@ -173,6 +197,10 @@ void CPU::ILLEGAL_OP(word opcode) {
 void CPU::reset() {
     PC = 0x0000;
     user_mode = false;
+    for (int i = 0; i < 0x10000; i++) {
+        rom_h[i] = i << (i%16);
+        rom_l[i] = i;
+    }
     // todo: reset I/O counter
 }
 
@@ -181,6 +209,9 @@ void CPU::execute(int32_t cycles) {
     while (cycles > 0) {
         // Fetch opcode
         word opcode = user_mode ? ram[PC++] : rom_h[PC];
+
+        // Todo: find a better way to do this
+        printf("Executing opcode %X\n", extract_bitfield(opcode, 15, 8));
 
         // Decode instruction
         switch (extract_bitfield(opcode, 15, 13)) {

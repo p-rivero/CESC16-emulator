@@ -16,6 +16,8 @@ class CPU {
 
 private:
 
+    // Helper structs:
+
     struct Mem {
         const static uint32_t MEM_SZ = 0x10000;
         word Data[MEM_SZ];
@@ -58,15 +60,26 @@ private:
         }
     };
 
+    // Flags / Status register
+    struct StatusFlags {
+        bool Z : 1; // Zero flag
+        bool V : 1; // Overflow flag
+        bool C : 1; // Carry flag
+        bool N : 1; // Negative flag
+    };
+
+
 
     word PC;                            // Program Counter
     Regfile regs;                       // Register file
     Regfile::Reg* const SP = &regs[1];  // Direct access to SP
 
-    bool Z : 1; // Zero flag
-    bool V : 1; // Overflow flag
-    bool C : 1; // Carry flag
-    bool N : 1; // Negative flag
+    // Flags register
+    union {
+        byte FLG;
+        CPU::StatusFlags Flags;
+    };
+    
 
     bool user_mode; // true if fetching from RAM, false if fetching from ROM
 
