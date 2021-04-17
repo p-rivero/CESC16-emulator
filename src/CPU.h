@@ -16,16 +16,13 @@ class CPU {
 
 private:
 
-    // Helper structs:
+    // HELPER STRUCTS
 
     struct Mem {
         const static uint32_t MEM_SZ = 0x10000;
         word Data[MEM_SZ];
 
-        word& operator[](word addr) {
-            // assert(addr < MEM_SZ);
-            return Data[addr];
-        }
+        word& operator[](word addr) { return Data[addr]; }
     };
 
     struct Regfile {
@@ -49,10 +46,8 @@ private:
         const static byte REGFILE_SZ = 16;
         Reg Data[REGFILE_SZ];
 
-        Regfile() {
-            Data[0] = Reg(true);
-            // No need to initialize anything else
-        }
+        // When initializing the register file, set index 0 as the zero register
+        Regfile() { Data[0] = Reg(true); }
 
         Reg& operator[](byte addr) {
             assert(addr < REGFILE_SZ);
@@ -65,7 +60,7 @@ private:
         bool Z : 1; // Zero flag
         bool V : 1; // Overflow flag
         bool C : 1; // Carry flag
-        bool N : 1; // Negative flag
+        bool S : 1; // Negative/Sign flag
     };
 
 
@@ -87,13 +82,28 @@ private:
     Mem rom_l, rom_h, ram;
 
 
+    // HELPER FUNCTIONS
+
     // Returns the value encoded between bit_left and bit_right (both included)
     static inline word extract_bitfield(word original, byte bit_left, byte bit_right);
 
+    // Returns the argument pointed by the PC
+    inline word fetch_argument();
+
+    // Push some data into the stack
+    inline void push(word data);
+
+    // Pop some data from the stack
+    inline word pop();
 
     // Returns the result of an ALU operation, given the funct bits and the 2 operands
     word ALU_result(byte funct, word A, word B);
 
+    // Returns true if the jump condition is met and the jump has to be performed
+    bool is_condition_met(byte cond);
+
+
+    // MAIN INSTRUCTION FUNCTIONS
 
     // Execute an ALU operation (operands in registers). Returns the used cycles
     int exec_ALU_reg(word opcode);

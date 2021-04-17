@@ -7,7 +7,26 @@ word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
     return (original >> bit_right) & mask;
 }
 
+// Returns the argument pointed by the PC
+word CPU::fetch_argument() {
+    return user_mode ? ram[PC] : rom_l[PC];
+}
 
+// Push some data into the stack
+void CPU::push(word data) {
+    *SP = *SP - 1; // No -= operator
+    ram[*SP] = data;
+}
+
+// Pop some data from the stack
+word CPU::pop() {
+    word data = ram[*SP];
+    *SP = *SP + 1; // No += operator
+    return data;
+}
+
+
+// Returns the result of an ALU operation, given the funct bits and the 2 operands
 word CPU::ALU_result(byte funct, word A, word B) {
     if (funct == 0b000) return A;  // mov
 
@@ -45,13 +64,62 @@ word CPU::ALU_result(byte funct, word A, word B) {
     Flags.Z = not result;
     Flags.C = bool(true_result & 0x10000);
     Flags.V = (A&MSB == B&MSB) and (A&MSB != result&MSB);
-    Flags.N = bool(result&MSB);
+    Flags.S = bool(result&MSB);
 
     // todo: remove assert
     assert(Flags.V == (A&MSB and B&MSB and not result&MSB) or (not A&MSB and not B&MSB and result&MSB));
 
     return result;
 }
+
+// Returns true if the jump condition is met and the jump has to be performed
+bool CPU::is_condition_met(byte cond) {
+    switch (cond) {
+    case 0b0000: // jmp
+        return true;
+
+    case 0b0001: // jz / je
+        return Flags.Z;
+    case 0b0010: // jnz / jne
+        return not Flags.Z;
+
+    case 0b0011: // jc / jb / jnae
+        return Flags.C;
+    case 0b0100: // jnc / jnb / jae
+        return not Flags.C;
+
+    case 0b0101: // jo
+        return Flags.V;
+    case 0b0110: // jno
+        return not Flags.V;
+
+    case 0b0111: // js
+        return Flags.S;
+    case 0b1000: // jns
+        return not Flags.S;
+
+    case 0b1001: // jbe / jna
+        return Flags.C or Flags.Z;
+    case 0b1010: // ja / jnbe
+        return not (Flags.C or Flags.Z);
+
+    case 0b1011: // jl / jnge
+        return Flags.V != Flags.S;
+    case 0b1100: // jle / jng
+        return (Flags.V != Flags.S) or Flags.Z;
+
+    case 0b1101: // jg / jnle
+        return (Flags.V == Flags.S) and not Flags.Z;
+    case 0b1110: // jge / jnl
+        return Flags.V == Flags.S;
+    
+    default:
+        printf("Invalid jump condition: 0x%X\n", cond);
+        exit(EXIT_FAILURE);
+        break;
+    }
+}
+
 
 // Execute an ALU operation (operands in registers). Returns the used cycles
 int CPU::exec_ALU_reg(word opcode) {
@@ -60,7 +128,7 @@ int CPU::exec_ALU_reg(word opcode) {
     byte rD = extract_bitfield(opcode, 7, 4);
     byte rA = extract_bitfield(opcode, 3, 0);
 
-    word argument = user_mode ? ram[PC] : rom_h[PC];
+    word argument = fetch_argument();
 
     if (immediate_mode)
         regs[rD] = ALU_result(funct, regs[rA], argument);
@@ -79,7 +147,7 @@ int CPU::exec_ALU_m_op(word opcode) {
     byte rD = extract_bitfield(opcode, 7, 4);
     byte rA = extract_bitfield(opcode, 3, 0);
 
-    word argument = user_mode ? ram[PC] : rom_h[PC];
+    word argument = fetch_argument();
     int cycles = 4;
 
     if (addr_mode == 0b00) {
@@ -106,7 +174,7 @@ int CPU::exec_ALU_m_dest(word opcode) {
     byte funct = extract_bitfield(opcode, 10, 8);
     byte rA = extract_bitfield(opcode, 3, 0);
 
-    word argument = user_mode ? ram[PC] : rom_h[PC];
+    word argument = fetch_argument();
     int cycles = 4;
 
     if (addr_mode == 0b00) {
@@ -148,14 +216,14 @@ int CPU::exec_SHFT(word opcode) {
     case 0b10: // srl
         result = uint16_t(regs[rA]) >> shamt;
         Flags.Z = not result;
-        Flags.N = bool(result&MSB);
+        Flags.S = bool(result&MSB);
         // V and C are undefined
         break;
 
     case 0b11: // sra
         result = int16_t(regs[rA]) >> shamt;
         Flags.Z = not result;
-        Flags.N = bool(result&MSB);
+        Flags.S = bool(result&MSB);
         // V and C are undefined
         break;
     
@@ -172,12 +240,84 @@ int CPU::exec_SHFT(word opcode) {
 
 // Execute a memory operation. Returns the used cycles
 int CPU::exec_MEM(word opcode) {
-    return 1;
+    byte rD = extract_bitfield(opcode, 7, 4);
+    byte rA = extract_bitfield(opcode, 3, 0);
+    word argument = fetch_argument();
+
+    switch (extract_bitfield(opcode, 12, 8)) {
+    case 0b00000: { // movb
+        word data = ram[regs[rA] + argument];
+        if (extract_bitfield(data, 7, 7)) data |= 0xFF00; // Sign extend
+        regs[rD] = data;
+        return 3;
+    }
+    case 0b00001: { // swap
+        word address = regs[rA] + argument;
+        word temp = regs[rD];
+        regs[rD] = ram[address];
+        ram[address] = temp;
+        return 5;
+    }
+    case 0b00010: // peek (LSB/argument)
+        regs[rD] = rom_l[regs[rA] + argument];
+        return 3;
+    case 0b00011: // peek (MSB/opcode)
+        regs[rD] = rom_h[regs[rA] + argument];
+        return 3;
+
+    case 0b00100: { // push (reg)
+        assert(rA == 0b0001);
+        byte rB = extract_bitfield(argument, 3, 0);
+        push(regs[rB]);
+        return 3;
+    }
+    case 0b00101: // push (imm)
+        assert(rA == 0b0001);
+        push(argument);
+        return 3;
+    case 0b00110: // pushf
+        assert(rA == 0b0001);
+        push(FLG);
+        return 3;
+        
+    case 0b00111: // pop
+        assert(rA == 0b0001);
+        regs[rD] = pop();
+        return 3;
+    case 0b01000: // popf
+        assert(rA == 0b0001);
+        FLG = pop();
+        assert(FLG & 0xF0 == 0); // Top bits should be 0
+        return 3;
+    
+    default:
+        ILLEGAL_OP(opcode);
+        break;
+    }
+
+    printf("Unreachable code! Opcode = 0x%X\n", opcode);
+    exit(EXIT_FAILURE);
+    return 0;
 }
 
 // Execute a jump. Returns the used cycles
 int CPU::exec_JMP(word opcode) {
-    return 1;
+    byte cond = extract_bitfield(opcode, 11, 8);
+
+    if (not is_condition_met(cond)) return 2; // Jump is not taken
+
+    // Jump is taken
+    if (extract_bitfield(opcode, 12, 12) == 0) {
+        // Jump to address in register
+        byte rA = extract_bitfield(opcode, 3, 0);
+        PC = regs[rA];
+    }
+    else {
+        // Jump to immediate address
+        PC = fetch_argument();
+    }
+    PC--; // Workaround due to the PC being incremented on each instruction
+    return 2;
 }
 
 // Execute a call/ret operation. Returns the used cycles
@@ -197,6 +337,7 @@ void CPU::ILLEGAL_OP(word opcode) {
 void CPU::reset() {
     PC = 0x0000;
     user_mode = false;
+    // Initialize ROM as garbage
     for (int i = 0; i < 0x10000; i++) {
         rom_h[i] = i << (i%16);
         rom_l[i] = i;
