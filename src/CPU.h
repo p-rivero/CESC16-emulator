@@ -77,6 +77,7 @@ private:
     
 
     bool user_mode; // true if fetching from RAM, false if fetching from ROM
+    bool increment_PC; // If set to false by an instruction, the PC won't be postincremented
 
     // Memory banks: ROM (32 bit), RAM (16 bit)
     Mem rom_l, rom_h, ram;
@@ -86,6 +87,9 @@ private:
 
     // Returns the value encoded between bit_left and bit_right (both included)
     static inline word extract_bitfield(word original, byte bit_left, byte bit_right);
+
+    // Returns the bit encoded in a given position (0 or 1)
+    static inline byte extract_bit(word original, byte bit_pos);
 
     // Returns the argument pointed by the PC
     inline word fetch_argument();

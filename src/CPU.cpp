@@ -7,6 +7,11 @@ word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
     return (original >> bit_right) & mask;
 }
 
+// Returns the bit encoded in a given position (0 or 1)
+byte CPU::extract_bit(word original, byte bit_pos) {
+    return extract_bitfield(original, bit_pos, bit_pos);
+}
+
 // Returns the argument pointed by the PC
 word CPU::fetch_argument() {
     return user_mode ? ram[PC] : rom_l[PC];
@@ -123,7 +128,7 @@ bool CPU::is_condition_met(byte cond) {
 
 // Execute an ALU operation (operands in registers). Returns the used cycles
 int CPU::exec_ALU_reg(word opcode) {
-    bool immediate_mode = extract_bitfield(opcode, 11, 11);
+    bool immediate_mode = extract_bit(opcode, 11);
     byte funct = extract_bitfield(opcode, 10, 8);
     byte rD = extract_bitfield(opcode, 7, 4);
     byte rA = extract_bitfield(opcode, 3, 0);
@@ -247,7 +252,7 @@ int CPU::exec_MEM(word opcode) {
     switch (extract_bitfield(opcode, 12, 8)) {
     case 0b00000: { // movb
         word data = ram[regs[rA] + argument];
-        if (extract_bitfield(data, 7, 7)) data |= 0xFF00; // Sign extend
+        if (extract_bit(data, 7)) data |= 0xFF00; // Sign extend
         regs[rD] = data;
         return 3;
     }
@@ -307,7 +312,7 @@ int CPU::exec_JMP(word opcode) {
     if (not is_condition_met(cond)) return 2; // Jump is not taken
 
     // Jump is taken
-    if (extract_bitfield(opcode, 12, 12) == 0) {
+    if (extract_bit(opcode, 12) == 0) {
         // Jump to address in register
         byte rA = extract_bitfield(opcode, 3, 0);
         PC = regs[rA];
@@ -316,13 +321,76 @@ int CPU::exec_JMP(word opcode) {
         // Jump to immediate address
         PC = fetch_argument();
     }
-    PC--; // Workaround due to the PC being incremented on each instruction
+    // do not increment the PC after executing this instruction
+    increment_PC = false;
+    
     return 2;
 }
 
 // Execute a call/ret operation. Returns the used cycles
 int CPU::exec_CALL(word opcode) {
-    return 1;
+    assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+    
+    word argument = fetch_argument();
+    byte rB = extract_bitfield(argument, 3, 0);
+
+    word destination;
+    if (extract_bit(opcode, 8) == 0) destination = regs[rB]; // REG variant
+    else destination = argument; // IMM variant
+
+    // do not increment the PC after executing this instruction
+    increment_PC = false;
+
+    switch (extract_bitfield(opcode, 12, 9)) {
+    case 0b0000: // call
+        push(PC + 1);
+        PC = destination;
+        return 3;
+        
+    case 0b0001: // syscall
+        push(PC + 1);
+        PC = destination;
+        user_mode = false;
+        break;
+
+    case 0b0010: // enter
+        push(PC + 1);
+        PC = destination;
+        user_mode = true;
+        break;
+
+    case 0b0011:
+        if (extract_bit(opcode, 8) == 0) {
+            // 0b00110 -> ret
+            PC = pop();
+        }
+        else {
+            // 0b00111 -> sysret
+            PC = pop();
+            user_mode = true;
+        }
+        break;
+    
+    case 0b0100: // exit
+        if (extract_bit(opcode, 8) == 0) {
+            // 0b01000 -> exit
+            PC = pop();
+            user_mode = false;
+        }
+        else {
+            // 0b01001 -> illegal
+            ILLEGAL_OP(opcode);
+        }
+        break;
+    
+    default:
+        ILLEGAL_OP(opcode);
+        break;
+    }
+
+    printf("Unreachable code! Opcode = 0x%X\n", opcode);
+    exit(EXIT_FAILURE);
+    return 0;
 }
 
 // Called whenever the CPU attempts to execute an illegal opcode
@@ -350,6 +418,7 @@ void CPU::execute(int32_t cycles) {
     while (cycles > 0) {
         // Fetch opcode
         word opcode = user_mode ? ram[PC++] : rom_h[PC];
+        increment_PC = true;
 
         // Todo: find a better way to do this
         printf("Executing opcode %X\n", extract_bitfield(opcode, 15, 8));
@@ -358,7 +427,7 @@ void CPU::execute(int32_t cycles) {
         switch (extract_bitfield(opcode, 15, 13)) {
         case 0b000:
             // ALU or shift operation
-            if (extract_bitfield(opcode, 12, 12) == 0) {
+            if (extract_bit(opcode, 12) == 0) {
                 // 0000... -> ALU op
                 cycles -= exec_ALU_reg(opcode);
             }
@@ -405,6 +474,6 @@ void CPU::execute(int32_t cycles) {
         }
 
         // Increment PC at the end of instruction
-        PC++;
+        if (increment_PC) PC++;
     }
 }

@@ -1,4 +1,4 @@
-# todo: once finished this can be replaced by -O2 
+# todo: once finished this can be replaced by -O2
 OPTIONS = -g
 
 CESC_Emu: src/main.cpp src/CPU.cpp
