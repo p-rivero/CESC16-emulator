@@ -33,7 +33,7 @@ word CPU::pop() {
 
 // Returns the result of an ALU operation, given the funct bits and the 2 operands
 word CPU::ALU_result(byte funct, word A, word B) {
-    if (funct == 0b000) return A;  // mov
+    if (funct == 0b000) return B;  // mov
 
     word result;
     uint32_t true_result;
@@ -405,11 +405,6 @@ void CPU::ILLEGAL_OP(word opcode) {
 void CPU::reset() {
     PC = 0x0000;
     user_mode = false;
-    // Initialize ROM as garbage
-    for (int i = 0; i < 0x10000; i++) {
-        rom_h[i] = i << (i%16);
-        rom_l[i] = i;
-    }
     // todo: reset I/O counter
 }
 
@@ -421,7 +416,7 @@ void CPU::execute(int32_t cycles) {
         increment_PC = true;
 
         // Todo: find a better way to do this
-        printf("Executing opcode %X\n", extract_bitfield(opcode, 15, 8));
+        printf("Executing opcode %2X\n", extract_bitfield(opcode, 15, 8));
 
         // Decode instruction
         switch (extract_bitfield(opcode, 15, 13)) {
@@ -476,4 +471,11 @@ void CPU::execute(int32_t cycles) {
         // Increment PC at the end of instruction
         if (increment_PC) PC++;
     }
+}
+
+
+// Write a 32-bit word to the upper and lower bits of ROM, at a given address
+void CPU::write_ROM(word address, word data_high, word data_low) {
+    rom_h[address] = data_high;
+    rom_l[address] = data_low;
 }

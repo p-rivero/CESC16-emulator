@@ -142,4 +142,7 @@ public:
 
     // Run CPU for a number of clock cycles
     void execute(int32_t cycles);
+
+    // Write a 32-bit word in ROM, at a given address
+    void write_ROM(word address, word data_high, word data_low);
 };
