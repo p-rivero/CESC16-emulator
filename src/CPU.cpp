@@ -199,10 +199,10 @@ int CPU::exec_ALU_m_dest(word opcode) {
         ram[regs[rA]] = ALU_result(funct, ram[regs[rA]], regs[rB]);
     }
     else {
-        // Indexed addressing: OP rD, [rA+imm]
+        // Indexed addressing: OP [rA+imm], rB
         byte rB = extract_bitfield(opcode, 7, 4);
         word address = regs[rA] + argument;
-        ram[address] = ALU_result(funct, ram[address], regs[rA]);
+        ram[address] = ALU_result(funct, ram[address], regs[rB]);
         cycles = 5;
     }
     if (funct == 0b000) cycles--; // mov takes 3 cycles (4 cycles in indexed mode)
@@ -349,11 +349,13 @@ int CPU::exec_CALL(word opcode) {
     // do not increment the PC after executing this instruction
     increment_PC = false;
 
+    int cycles = 3;
+
     switch (extract_bitfield(opcode, 12, 9)) {
     case 0b0000: // call
         push(PC + 1);
         PC = destination;
-        return 3;
+        break;
         
     case 0b0001: // syscall
         push(PC + 1);
@@ -371,11 +373,13 @@ int CPU::exec_CALL(word opcode) {
         if (extract_bit(opcode, 8) == 0) {
             // 0b00110 -> ret
             PC = pop();
+            cycles = 2;
         }
         else {
             // 0b00111 -> sysret
             PC = pop();
             user_mode = true;
+            cycles = 2;
         }
         break;
     
@@ -384,6 +388,7 @@ int CPU::exec_CALL(word opcode) {
             // 0b01000 -> exit
             PC = pop();
             user_mode = false;
+            cycles = 2;
         }
         else {
             // 0b01001 -> illegal
@@ -396,9 +401,7 @@ int CPU::exec_CALL(word opcode) {
         break;
     }
 
-    printf("Unreachable code (call)! Opcode = 0x%X\n", opcode);
-    exit(EXIT_FAILURE);
-    return 0;
+    return cycles;
 }
 
 // Called whenever the CPU attempts to execute an illegal opcode
