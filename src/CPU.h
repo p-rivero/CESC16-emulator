@@ -58,8 +58,8 @@ private:
     // Flags / Status register
     struct StatusFlags {
         bool Z : 1; // Zero flag
-        bool V : 1; // Overflow flag
         bool C : 1; // Carry flag
+        bool V : 1; // Overflow flag
         bool S : 1; // Negative/Sign flag
     };
 

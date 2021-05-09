@@ -49,7 +49,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
     case 0b101: // sub
         result = A-B;
         true_result = uint32_t(A) - uint32_t(B);
-        true_result = ~true_result; // borrow is the opposite of carry
+        B = ~B; // Invert second operand for overflow computation
         break;
     case 0b110: // addc
         result = A+B + Flags.C;
@@ -58,7 +58,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
     case 0b111: // subb
         result = A-B - Flags.C;
         true_result = uint32_t(A) - uint32_t(B) - uint32_t(Flags.C);
-        true_result = ~true_result; // borrow is the opposite of carry
+        B = ~B; // Invert second operand for overflow computation
         break;
     default:
         printf("Unreachable ALU funct: 0x%X\n", funct);
@@ -68,11 +68,12 @@ word CPU::ALU_result(byte funct, word A, word B) {
     // Set flags
     Flags.Z = not result;
     Flags.C = bool(true_result & 0x10000);
-    Flags.V = (A&MSB == B&MSB) and (A&MSB != result&MSB);
+    Flags.V = ((A&MSB) == (B&MSB)) and ((A&MSB) != (result&MSB));
     Flags.S = bool(result&MSB);
+    // No need to invert carry on sub, in case of borrow the upper bits of true_result are 0xFFFF
 
     // todo: remove assert
-    assert(Flags.V == (A&MSB and B&MSB and not result&MSB) or (not A&MSB and not B&MSB and result&MSB));
+    assert(Flags.V == ((A&MSB) and (B&MSB) and not (result&MSB)) or (not (A&MSB) and not (B&MSB) and (result&MSB)));
 
     return result;
 }
@@ -133,16 +134,21 @@ int CPU::exec_ALU_reg(word opcode) {
     byte rD = extract_bitfield(opcode, 7, 4);
     byte rA = extract_bitfield(opcode, 3, 0);
 
+    bool is_mov = (funct == 0b000);
+
     word argument = fetch_argument();
 
     if (immediate_mode)
         regs[rD] = ALU_result(funct, regs[rA], argument);
     else {
         byte rB = extract_bitfield(argument, 3, 0);
+        // mov register to register uses rA instead of rB
+        if (is_mov) rB = rA;
+
         regs[rD] = ALU_result(funct, regs[rA], regs[rB]);
     }
 
-    return 3;
+    return is_mov ? 2 : 3;
 }
 
 // Execute an ALU operation (operand in memory). Returns the used cycles
@@ -169,6 +175,7 @@ int CPU::exec_ALU_m_op(word opcode) {
         regs[rD] = ALU_result(funct, regs[rD], ram[regs[rA] + argument]);
         cycles = 5;
     }
+    if (funct == 0b000) cycles = 3; // mov always takes 3 cycles
 
     return cycles;
 }
@@ -198,6 +205,7 @@ int CPU::exec_ALU_m_dest(word opcode) {
         ram[address] = ALU_result(funct, ram[address], regs[rA]);
         cycles = 5;
     }
+    if (funct == 0b000) cycles--; // mov takes 3 cycles (4 cycles in indexed mode)
 
     return cycles;
 }
@@ -292,7 +300,7 @@ int CPU::exec_MEM(word opcode) {
     case 0b01000: // popf
         assert(rA == 0b0001);
         FLG = pop();
-        assert(FLG & 0xF0 == 0); // Top bits should be 0
+        assert((FLG & 0xF0) == 0); // Top bits should be 0
         return 3;
     
     default:
@@ -300,7 +308,7 @@ int CPU::exec_MEM(word opcode) {
         break;
     }
 
-    printf("Unreachable code! Opcode = 0x%X\n", opcode);
+    printf("Unreachable code (mem)! Opcode = 0x%X\n", opcode);
     exit(EXIT_FAILURE);
     return 0;
 }
@@ -388,7 +396,7 @@ int CPU::exec_CALL(word opcode) {
         break;
     }
 
-    printf("Unreachable code! Opcode = 0x%X\n", opcode);
+    printf("Unreachable code (call)! Opcode = 0x%X\n", opcode);
     exit(EXIT_FAILURE);
     return 0;
 }
