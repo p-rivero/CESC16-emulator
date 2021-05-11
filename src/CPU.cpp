@@ -1,5 +1,28 @@
 #include "CPU.h"
 
+// Prints an error message and terminates the program
+void CPU::ERROR(const char *format, ...) {
+    // Delete ncurses window
+    Terminal::destroy();
+
+    if (user_mode) {
+        PC--; // PC gets autoincremented when opcode is fetched
+        fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, ram[PC], ram[PC+1]);
+    }
+    else {
+        // No need to decrement PC
+        fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, rom_h[PC], rom_l[PC]);
+    }
+    
+    // Print error message
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end (args);
+
+    exit(EXIT_FAILURE);
+}
+
 // Returns the value encoded between bit_left and bit_right (both included)
 word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
     assert(bit_left >= bit_right);
@@ -61,8 +84,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
         B = ~B; // Invert second operand for overflow computation
         break;
     default:
-        printf("Unreachable ALU funct: 0x%X\n", funct);
-        exit(EXIT_FAILURE);
+        ERROR("Unreachable ALU funct: 0x%X\n", funct);
     }
 
     // Set flags
@@ -120,10 +142,10 @@ bool CPU::is_condition_met(byte cond) {
         return Flags.V == Flags.S;
     
     default:
-        printf("Invalid jump condition: 0x%X\n", cond);
-        exit(EXIT_FAILURE);
+        ERROR("Invalid jump condition: 0x%X\n", cond);
         break;
     }
+    return false;
 }
 
 
@@ -241,8 +263,7 @@ int CPU::exec_SHFT(word opcode) {
         break;
     
     default:
-        printf("Unreachable shift op: 0x%X\n", op);
-        exit(EXIT_FAILURE);
+        ERROR("Unreachable shift op: 0x%X\n", op);
         break;
     }
     
@@ -308,8 +329,7 @@ int CPU::exec_MEM(word opcode) {
         break;
     }
 
-    printf("Unreachable code (mem)! Opcode = 0x%X\n", opcode);
-    exit(EXIT_FAILURE);
+    ERROR("Unreachable code (mem)! Opcode = 0x%X\n", opcode);
     return 0;
 }
 
@@ -337,8 +357,6 @@ int CPU::exec_JMP(word opcode) {
 
 // Execute a call/ret operation. Returns the used cycles
 int CPU::exec_CALL(word opcode) {
-    assert(extract_bitfield(opcode, 3, 0) == 0b0001);
-    
     word argument = fetch_argument();
     byte rB = extract_bitfield(argument, 3, 0);
 
@@ -353,17 +371,20 @@ int CPU::exec_CALL(word opcode) {
 
     switch (extract_bitfield(opcode, 12, 9)) {
     case 0b0000: // call
+        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
         push(PC + 1);
         PC = destination;
         break;
         
     case 0b0001: // syscall
+        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
         push(PC + 1);
         PC = destination;
         user_mode = false;
         break;
 
     case 0b0010: // enter
+        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
         push(PC + 1);
         PC = destination;
         user_mode = true;
@@ -371,11 +392,13 @@ int CPU::exec_CALL(word opcode) {
 
     case 0b0011:
         if (extract_bit(opcode, 8) == 0) {
+            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
             // 0b00110 -> ret
             PC = pop();
             cycles = 2;
         }
         else {
+            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
             // 0b00111 -> sysret
             PC = pop();
             user_mode = true;
@@ -385,6 +408,7 @@ int CPU::exec_CALL(word opcode) {
     
     case 0b0100: // exit
         if (extract_bit(opcode, 8) == 0) {
+            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
             // 0b01000 -> exit
             PC = pop();
             user_mode = false;
@@ -406,9 +430,7 @@ int CPU::exec_CALL(word opcode) {
 
 // Called whenever the CPU attempts to execute an illegal opcode
 void CPU::ILLEGAL_OP(word opcode) {
-    printf("\n");
-    printf("Instruction 0x%X not handled!\n", opcode);
-    exit(EXIT_FAILURE);
+    ERROR("Instruction 0x%X not handled!\n", opcode);
 }
 
 
@@ -425,9 +447,6 @@ void CPU::execute(int32_t cycles) {
         // Fetch opcode
         word opcode = user_mode ? ram[PC++] : rom_h[PC];
         increment_PC = true;
-
-        // Todo: find a better way to do this
-        printf("Executing opcode %2X\n", extract_bitfield(opcode, 15, 8));
 
         // Decode instruction
         switch (extract_bitfield(opcode, 15, 13)) {

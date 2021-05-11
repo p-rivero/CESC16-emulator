@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <ciso646> // Include this so vscode doesn't complain about alternative logical operators
 
+#include "Terminal.h"
+
 // Based on Dave Poo's 6502 emulator
 
 using byte = uint8_t;
@@ -82,9 +84,16 @@ private:
     // Memory banks: ROM (32 bit), RAM (16 bit)
     Mem rom_l, rom_h, ram;
 
+    // Terminal for input and output
+    Terminal *terminal;
+
+
 
     // HELPER FUNCTIONS
 
+    // Prints a formatted error message and terminates the program
+    void ERROR(const char *msg, ...);
+    
     // Returns the value encoded between bit_left and bit_right (both included)
     static inline word extract_bitfield(word original, byte bit_left, byte bit_right);
 
@@ -105,6 +114,7 @@ private:
 
     // Returns true if the jump condition is met and the jump has to be performed
     bool is_condition_met(byte cond);
+
 
 
     // MAIN INSTRUCTION FUNCTIONS
@@ -136,6 +146,14 @@ private:
 
 public:
     const static word MSB = 0x8000;
+
+    CPU() {
+        terminal = Terminal::initialize();
+    }
+    ~CPU() {
+        Terminal::destroy();
+    }
+
 
     // Reset CPU
     void reset();
