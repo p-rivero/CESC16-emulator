@@ -1,5 +1,4 @@
 #include "Terminal.h"
-#include <termios.h>
 
 Terminal *Terminal::term = NULL;
 

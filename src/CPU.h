@@ -1,19 +1,9 @@
 #pragma once
 
-#include <cstdio>
-#include <cstdlib>
-#include <cassert>
-
-#include <cstdint>
-#include <ciso646> // Include this so vscode doesn't complain about alternative logical operators
-
+#include "includes.h"
 #include "Terminal.h"
 
 // Based on Dave Poo's 6502 emulator
-
-using byte = uint8_t;
-using word = uint16_t;
-
 class CPU {
 
 private:

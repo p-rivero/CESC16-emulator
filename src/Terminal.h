@@ -1,5 +1,8 @@
-#include <string>
+#pragma once
+
+#include "includes.h"
 #include <curses.h>
+#include <termios.h>
 
 
 class Terminal {
