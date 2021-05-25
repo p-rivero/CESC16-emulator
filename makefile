@@ -3,7 +3,7 @@ OPTIONS = -g
 
 
 CESC_Emu: src/main.o src/CPU.o src/Terminal.o
-	g++ $(OPTIONS) -o CESC_Emu src/main.o src/CPU.o src/Terminal.o -lncurses
+	g++ $(OPTIONS) -o CESC_Emu src/main.o src/CPU.o src/Terminal.o -lncurses -pthread
 
 
 src/main.o: src/main.cpp

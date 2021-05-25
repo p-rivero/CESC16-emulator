@@ -1,7 +1,14 @@
 #include "CPU.h"
-#include <fstream>
 
-void read_bin(std::ifstream& hex_file, CPU *cpu) {
+#include <fstream>
+#include <chrono>
+#include <thread>
+#include <functional>
+
+
+CPU *cpu;
+
+void read_bin(std::ifstream& hex_file) {
     uint32_t address = 0;
     word high, low;
     while (hex_file >> std::hex >> high) {
@@ -24,6 +31,18 @@ void read_bin(std::ifstream& hex_file, CPU *cpu) {
     }
 }
 
+void timer_start(std::function<void(void)> func, unsigned int interval) {
+    std::thread([func, interval]() {
+        while (true) {
+            auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+            func();
+            std::this_thread::sleep_until(x);
+        }
+    }).detach();
+}
+
+void call_update() { cpu->update(); }
+
 int main(int argc, char **argv) {
     // Check arguments
     if (argc != 2) {
@@ -33,7 +52,7 @@ int main(int argc, char **argv) {
     }
 
     // Create and reset CPU
-    CPU *cpu = new CPU;
+    cpu = new CPU;
     cpu->reset();
 
     // Enter program in ROM
@@ -43,9 +62,12 @@ int main(int argc, char **argv) {
         perror("ROM file could not be opened");
         exit(EXIT_FAILURE);
     }
-    read_bin(hex_file, cpu);
+    read_bin(hex_file);
     hex_file.close();
     
+    // Schedule timer for calling update() every 16 milliseconds
+    timer_start(call_update, 16);
+
     // Execute program
     while (true) {
         cpu->execute(50);
