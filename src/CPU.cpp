@@ -441,8 +441,9 @@ void CPU::reset() {
     // todo: reset I/O counter
 }
 
-// Run CPU for a number of clock cycles
-void CPU::execute(int32_t cycles) {
+// Run CPU for a number of clock cycles. Instructions are atomic, the function  
+// returns how many extra cycles were needed to finish the last instruction.
+int32_t CPU::execute(int32_t cycles) {
     while (cycles > 0) {
         // Fetch opcode
         word opcode = user_mode ? ram[PC++] : rom_h[PC];
@@ -500,6 +501,20 @@ void CPU::execute(int32_t cycles) {
 
         // Increment PC at the end of instruction
         if (increment_PC) PC++;
+    }
+
+    // If finishing an instruction took some extra cycles, return how many
+    return -cycles;
+}
+
+
+void CPU::update() {
+    terminal->flush();
+    byte input = terminal->get_input();
+
+    if (input) {
+        printf("Got input: %c\n", input);
+        // TODO: INTERRUPT
     }
 }
 

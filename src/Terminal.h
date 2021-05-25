@@ -24,4 +24,8 @@ public:
         delete term;
         term = NULL;
     }
+
+    void output(word data);
+    void flush();
+    byte get_input();
 };

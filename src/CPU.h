@@ -148,8 +148,12 @@ public:
     // Reset CPU
     void reset();
 
-    // Run CPU for a number of clock cycles
-    void execute(int32_t cycles);
+    // Run CPU for a number of clock cycles. Instructions are atomic, the function  
+    // returns how many extra cycles were needed to finish the last instruction.
+    int32_t execute(int32_t cycles);
+
+    // Called at regular intervals for updating the UI and getting input
+    void update();
 
     // Write a 32-bit word in ROM, at a given address
     void write_ROM(word address, word data_high, word data_low);
