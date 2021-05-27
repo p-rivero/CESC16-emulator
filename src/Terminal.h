@@ -10,6 +10,7 @@ class Terminal {
 private:
     static Terminal *term;
     WINDOW *mainwin;
+    byte current_input = 0;
 
     Terminal();
     ~Terminal();
@@ -25,7 +26,13 @@ public:
         term = NULL;
     }
 
+    // Output a char
     void output(word data);
+    // Flush the output stream
     void flush();
-    byte get_input();
+
+    // Get the current input byte
+    byte read_input() const;
+    // Update the current input byte if needed. Returns true if a new input has been loaded
+    bool update_input();
 };

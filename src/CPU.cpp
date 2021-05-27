@@ -149,6 +149,68 @@ bool CPU::is_condition_met(byte cond) {
 }
 
 
+
+int CPU::exec_INSTR(word opcode) {
+
+    int used_cycles;
+    increment_PC = true;
+
+    // Decode instruction
+    switch (extract_bitfield(opcode, 15, 13)) {
+    case 0b000:
+        // ALU or shift operation
+        if (extract_bit(opcode, 12) == 0) {
+            // 0000... -> ALU op
+            used_cycles = exec_ALU_reg(opcode);
+        }
+        else {
+            // 0001... -> sll
+            used_cycles = exec_SHFT(opcode);
+        }
+        break;
+
+    case 0b001:
+        // Shift operation
+        used_cycles = exec_SHFT(opcode);
+        break;
+
+    case 0b010:
+        // ALU operation (operand in memory)
+        used_cycles = exec_ALU_m_op(opcode);
+        break;
+
+    case 0b011:
+        // ALU operation (destination in memory)
+        used_cycles = exec_ALU_m_dest(opcode);
+        break;
+
+    case 0b100:
+        // Memory operation
+        used_cycles = exec_MEM(opcode);
+        break;
+
+    case 0b110:
+        // Jump
+        used_cycles = exec_JMP(opcode);
+        break;
+
+    case 0b111:
+        // Call/ret opcode
+        used_cycles = exec_CALL(opcode);
+        break;
+    
+    default:
+        // Illegal opcode
+        ILLEGAL_OP(opcode);
+        break;
+    }
+
+    // Increment PC at the end of instruction
+    if (increment_PC) PC++;
+
+    return used_cycles;
+}
+
 // Execute an ALU operation (operands in registers). Returns the used cycles
 int CPU::exec_ALU_reg(word opcode) {
     bool immediate_mode = extract_bit(opcode, 11);
@@ -434,10 +496,12 @@ void CPU::ILLEGAL_OP(word opcode) {
 }
 
 
+
 // Reset CPU
 void CPU::reset() {
     PC = 0x0000;
     user_mode = false;
+    IRQ = false;
     // todo: reset I/O counter
 }
 
@@ -445,77 +509,43 @@ void CPU::reset() {
 // returns how many extra cycles were needed to finish the last instruction.
 int32_t CPU::execute(int32_t cycles) {
     while (cycles > 0) {
+        int used_cycles;
+
         // Fetch opcode
         word opcode = user_mode ? ram[PC++] : rom_h[PC];
-        increment_PC = true;
 
-        // Decode instruction
-        switch (extract_bitfield(opcode, 15, 13)) {
-        case 0b000:
-            // ALU or shift operation
-            if (extract_bit(opcode, 12) == 0) {
-                // 0000... -> ALU op
-                cycles -= exec_ALU_reg(opcode);
-            }
-            else {
-                // 0001... -> sll
-                cycles -= exec_SHFT(opcode);
-            }
-            break;
+        if (IRQ) {
+            // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
+            push(PC+1);
+            PC = user_mode ? 0x0011 : 0x0013;
 
-        case 0b001:
-            // Shift operation
-            cycles -= exec_SHFT(opcode);
-            break;
-
-        case 0b010:
-            // ALU operation (operand in memory)
-            cycles -= exec_ALU_m_op(opcode);
-            break;
-
-        case 0b011:
-            // ALU operation (destination in memory)
-            cycles -= exec_ALU_m_dest(opcode);
-            break;
-
-        case 0b100:
-            // Memory operation
-            cycles -= exec_MEM(opcode);
-            break;
-
-        case 0b110:
-            // Jump
-            cycles -= exec_JMP(opcode);
-            break;
-
-        case 0b111:
-            // Call/ret opcode
-            cycles -= exec_CALL(opcode);
-            break;
-        
-        default:
-            // Illegal opcode
-            ILLEGAL_OP(opcode);
-            break;
+            user_mode = false;  // Jump to ROM
+            used_cycles = 3;    // Takes 3 clock cycles in both cases
+            IRQ = false;
+        }
+        else {
+            // Execute instruction normally
+            used_cycles = exec_INSTR(opcode);
         }
 
-        // Increment PC at the end of instruction
-        if (increment_PC) PC++;
+        // Decrement the remaining cycles
+        cycles -= used_cycles;
+
+        // Tick the hardware timer. If an overflow occurs, trigger interrupt
+        if (timer.tick(used_cycles)) IRQ = true;
     }
 
     // If finishing an instruction took some extra cycles, return how many
     return -cycles;
 }
 
-
+// Called at regular intervals for updating the UI and getting input
 void CPU::update() {
+    // Flush the output stream
     terminal->flush();
-    byte input = terminal->get_input();
 
-    if (input) {
-        printf("Got input: %c\n", input);
-        // TODO: INTERRUPT
-    }
+    // If a new key has been pressed, trigger interrupt
+    if (terminal->update_input()) IRQ = true;
 }
 
 

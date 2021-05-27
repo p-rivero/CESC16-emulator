@@ -27,19 +27,30 @@ Terminal::~Terminal(){
     refresh();
 }
 
+
+// Output a char
 void Terminal::output(word data) {
+    // TODO: If data = ACK, clear current_input
     printf("%c", char(data));
 }
 
+// Flush the output stream
 void Terminal::flush() {
     fflush(stdout);
 }
 
-byte Terminal::get_input() {
-    int ch = getch();
-    if (ch == ERR) return 0; 
+// Get the current input byte
+byte Terminal::read_input() const {
+    return current_input;
+}
 
-    byte result = 0;
+// Update the current input byte if needed. Returns true if a new input has been loaded
+bool Terminal::update_input() {
+    // Only get new input if needed
+    if (current_input != 0) return false;
+
+    int ch = getch();
+    if (ch == ERR) return false; 
 
     switch (ch) {
         case KEY_END: // END: Terminate execution
@@ -47,14 +58,14 @@ byte Terminal::get_input() {
             exit(EXIT_SUCCESS);
             break;
 
-        case KEY_HOME: result = 23; break;          // From PS2Keyboard.h (Arduino PS/2 controller)
-        case KEY_BACKSPACE: result = '\b'; break;   // Backspace: Send \b
+        case KEY_HOME: current_input = 23; break;          // From PS2Keyboard.h (Arduino PS/2 controller)
+        case KEY_BACKSPACE: current_input = '\b'; break;   // Backspace: Send \b
         // Todo: add the rest of special keys
         
         default:
             assert((ch & 0xFFFFFF00) == 0); // Make sure all special keys have been catched
-            result = ch;  // Else send regular input
+            current_input = ch;  // Else send regular input
     }
     
-    return result;
+    return true;
 }

@@ -2,6 +2,7 @@
 
 #include "includes.h"
 #include "Terminal.h"
+#include "Timer.h"
 
 // Based on Dave Poo's 6502 emulator
 class CPU {
@@ -70,12 +71,16 @@ private:
 
     bool user_mode; // true if fetching from RAM, false if fetching from ROM
     bool increment_PC; // If set to false by an instruction, the PC won't be postincremented
+    bool IRQ;
 
     // Memory banks: ROM (32 bit), RAM (16 bit)
     Mem rom_l, rom_h, ram;
 
     // Terminal for input and output
     Terminal *terminal;
+
+    // 16-bit timer
+    Timer timer;
 
 
 
@@ -108,6 +113,9 @@ private:
 
 
     // MAIN INSTRUCTION FUNCTIONS
+
+    // Execute a generic instruction. Returns the used cycles
+    int exec_INSTR(word opcode);
 
     // Execute an ALU operation (operands in registers). Returns the used cycles
     int exec_ALU_reg(word opcode);
