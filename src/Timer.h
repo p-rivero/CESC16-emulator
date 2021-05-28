@@ -1,7 +1,8 @@
 #pragma once
 #include "includes.h"
+#include "Memory.h"
 
-class Timer {
+class Timer : public MemCell {
 
 /*  A note on simulating timers:
     This emulator doesn't simulate the timesteps of the original CPU. Instead, entire instructions are
@@ -24,13 +25,12 @@ private:
     bool just_updated = false;
 
 public:
+    // WRITE: Set the current timer value
+    virtual MemCell& operator=(word rhs);
+    // READ: Read the current value of the timer
+    virtual operator int() const;
+
     // Tick the timer for a number of clock cycles
     // Returns true only if an overflow has occurred
     bool tick(int amount);
-
-    // Read the current value of the timer
-    word read() const;
-
-    // Set the current timer value
-    void write(word data);
 };

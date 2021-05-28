@@ -44,6 +44,11 @@ byte Terminal::read_input() const {
     return current_input;
 }
 
+// Acknowledge the current input byte
+void Terminal::ack_input() {
+    current_input = 0;
+}
+
 // Update the current input byte if needed. Returns true if a new input has been loaded
 bool Terminal::update_input() {
     // Only get new input if needed

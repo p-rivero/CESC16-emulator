@@ -1,6 +1,8 @@
 #pragma once
 
 #include "includes.h"
+#include "Memory.h"
+
 #include <curses.h>
 #include <termios.h>
 
@@ -33,6 +35,47 @@ public:
 
     // Get the current input byte
     byte read_input() const;
+    // Acknowledge the current input byte
+    void ack_input();
     // Update the current input byte if needed. Returns true if a new input has been loaded
     bool update_input();
+};
+
+
+class Keyboard : public MemCell {
+private:
+    Terminal *term;
+
+public:
+    // WRITE
+    virtual MemCell& operator=(word rhs) {
+        // Todo: check if rhs=ACK
+        term->ack_input();
+        return *this;
+    }
+    // READ
+    virtual operator int() const {
+        return term->read_input();
+    }
+
+    Keyboard() { term = Terminal::initialize(); }
+};
+
+class Display : public MemCell {
+private:
+    Terminal *term;
+
+public:
+    // WRITE
+    virtual MemCell& operator=(word rhs) {
+        term->output(rhs);
+        return *this;
+    }
+    // READ
+    virtual operator int() const {
+        // Todo: wait for some milliseconds before clearing ready flag
+        return 0;
+    }
+
+    Display() { term = Terminal::initialize(); }
 };

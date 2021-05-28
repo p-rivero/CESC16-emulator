@@ -7,11 +7,11 @@ void CPU::ERROR(const char *format, ...) {
 
     if (user_mode) {
         PC--; // PC gets autoincremented when opcode is fetched
-        fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, ram[PC], ram[PC+1]);
+        fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, uint(ram[PC]), uint(ram[PC+1]));
     }
     else {
         // No need to decrement PC
-        fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, rom_h[PC], rom_l[PC]);
+        fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, uint(rom_h[PC]), uint(rom_l[PC]));
     }
     
     // Print error message

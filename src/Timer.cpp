@@ -24,16 +24,18 @@ bool Timer::tick(int amount) {
     return false;
 }
 
-// Read the current value of the timer
-word Timer::read() const {
-    return timer_count >> 4;
-}
-
 // Set the current timer value
-void Timer::write(word data) {
+MemCell& Timer::operator=(word rhs) {
     timer_count &= 0x0000F; // Preserve prescaler bits
-    timer_count |= (data << 4); // Add value of the timer
+    timer_count |= (rhs << 4); // Add value of the timer
 
     // Also activate the timer
     timer_active = true;
+    just_updated = true;
+    return *this;
+}
+
+// Read the current value of the timer
+Timer::operator int() const {
+    return timer_count >> 4;
 }
