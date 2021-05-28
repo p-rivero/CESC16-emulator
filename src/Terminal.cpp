@@ -30,7 +30,6 @@ Terminal::~Terminal(){
 
 // Output a char
 void Terminal::output(word data) {
-    // TODO: If data = ACK, clear current_input
     printf("%c", char(data));
 }
 
@@ -68,9 +67,45 @@ bool Terminal::update_input() {
         // Todo: add the rest of special keys
         
         default:
-            assert((ch & 0xFFFFFF00) == 0); // Make sure all special keys have been catched
+            // Make sure all special keys have been catched
+            if (ch & 0xFFFFFF00) {
+                destroy(); // Destroy terminal
+                fprintf(stderr, "ERROR - Uncatched key: %s (0x%8X)\n", keyname(ch), ch);
+                exit(EXIT_FAILURE);
+            }
             current_input = ch;  // Else send regular input
+            break;
     }
     
     return true;
+}
+
+
+
+Keyboard::Keyboard() { term = Terminal::initialize(); }
+
+// WRITE
+MemCell& Keyboard::operator=(word rhs) {
+    // Todo: check if rhs=ACK
+    term->ack_input();
+    return *this;
+}
+// READ
+Keyboard::operator int() const {
+    return term->read_input();
+}
+
+
+
+Display::Display() { term = Terminal::initialize(); }
+
+// WRITE
+MemCell& Display::operator=(word rhs) {
+    term->output(rhs);
+    return *this;
+}
+// READ
+Display::operator int() const {
+    // Todo: wait for some milliseconds before clearing ready flag
+    return 0;
 }

@@ -2,8 +2,8 @@
 OPTIONS = -g
 
 
-CESC_Emu: src/main.o src/CPU.o src/Terminal.o src/Timer.o
-	g++ $(OPTIONS) -o CESC_Emu src/main.o src/CPU.o src/Terminal.o src/Timer.o -lncurses -pthread
+CESC_Emu: src/main.o src/CPU.o src/Memory.o src/Terminal.o src/Timer.o
+	g++ $(OPTIONS) -o CESC_Emu src/main.o src/CPU.o src/Memory.o src/Terminal.o src/Timer.o -lncurses -pthread
 
 
 src/main.o: src/main.cpp
@@ -11,6 +11,9 @@ src/main.o: src/main.cpp
 
 src/CPU.o: src/CPU.cpp
 	g++ $(OPTIONS) -c src/CPU.cpp -o src/CPU.o
+
+src/Memory.o: src/Memory.cpp
+	g++ $(OPTIONS) -c src/Memory.cpp -o src/Memory.o
 
 src/Terminal.o: src/Terminal.cpp
 	g++ $(OPTIONS) -c src/Terminal.cpp -o src/Terminal.o

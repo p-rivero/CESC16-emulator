@@ -47,35 +47,24 @@ private:
     Terminal *term;
 
 public:
-    // WRITE
-    virtual MemCell& operator=(word rhs) {
-        // Todo: check if rhs=ACK
-        term->ack_input();
-        return *this;
-    }
-    // READ
-    virtual operator int() const {
-        return term->read_input();
-    }
+    Keyboard();
 
-    Keyboard() { term = Terminal::initialize(); }
+    // WRITE
+    virtual MemCell& operator=(word rhs);
+    // READ
+    virtual operator int() const;
 };
+
 
 class Display : public MemCell {
 private:
     Terminal *term;
 
 public:
-    // WRITE
-    virtual MemCell& operator=(word rhs) {
-        term->output(rhs);
-        return *this;
-    }
-    // READ
-    virtual operator int() const {
-        // Todo: wait for some milliseconds before clearing ready flag
-        return 0;
-    }
+    Display();
 
-    Display() { term = Terminal::initialize(); }
+    // WRITE
+    virtual MemCell& operator=(word rhs);
+    // READ
+    virtual operator int() const;
 };
