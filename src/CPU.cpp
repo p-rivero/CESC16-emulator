@@ -1,28 +1,5 @@
 #include "CPU.h"
 
-// Prints an error message and terminates the program
-void CPU::ERROR(const char *format, ...) {
-    // Delete ncurses window
-    Terminal::destroy();
-
-    if (user_mode) {
-        PC--; // PC gets autoincremented when opcode is fetched
-        fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, uint(ram[PC]), uint(ram[PC+1]));
-    }
-    else {
-        // No need to decrement PC
-        fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n", PC, uint(rom_h[PC]), uint(rom_l[PC]));
-    }
-    
-    // Print error message
-    va_list args;
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end (args);
-
-    exit(EXIT_FAILURE);
-}
-
 // Returns the value encoded between bit_left and bit_right (both included)
 word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
     assert(bit_left >= bit_right);
@@ -43,6 +20,7 @@ word CPU::fetch_argument() {
 // Push some data into the stack
 void CPU::push(word data) {
     *SP = *SP - 1; // No -= operator
+    if (*SP == 0xFFFF) throw "SP overflowed";
     ram[*SP] = data;
 }
 
@@ -50,7 +28,15 @@ void CPU::push(word data) {
 word CPU::pop() {
     word data = ram[*SP];
     *SP = *SP + 1; // No += operator
+    if (*SP == 0x0000) throw "SP overflowed";
     return data;
+}
+
+// Equivalent to PC++, but if PC overflows an exception is thrown
+word CPU::PC_plus_1() {
+    PC++;
+    if (PC == 0x0000) throw "PC overflowed";
+    return PC;
 }
 
 
@@ -84,7 +70,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
         B = ~B; // Invert second operand for overflow computation
         break;
     default:
-        ERROR("Unreachable ALU funct: 0x%X\n", funct);
+        throw "Unreachable ALU funct!";
     }
 
     // Set flags
@@ -142,7 +128,7 @@ bool CPU::is_condition_met(byte cond) {
         return Flags.V == Flags.S;
     
     default:
-        ERROR("Invalid jump condition: 0x%X\n", cond);
+        throw "Invalid jump condition";
         break;
     }
     return false;
@@ -200,13 +186,12 @@ int CPU::exec_INSTR(word opcode) {
         break;
     
     default:
-        // Illegal opcode
-        ILLEGAL_OP(opcode);
+        throw "Illegal opcode";
         break;
     }
 
     // Increment PC at the end of instruction
-    if (increment_PC) PC++;
+    if (increment_PC) PC_plus_1();
 
     return used_cycles;
 }
@@ -325,7 +310,7 @@ int CPU::exec_SHFT(word opcode) {
         break;
     
     default:
-        ERROR("Unreachable shift op: 0x%X\n", op);
+        throw "Unreachable shift op!";
         break;
     }
     
@@ -387,11 +372,11 @@ int CPU::exec_MEM(word opcode) {
         return 3;
     
     default:
-        ILLEGAL_OP(opcode);
+        throw "Illegal opcode";
         break;
     }
 
-    ERROR("Unreachable code (mem)! Opcode = 0x%X\n", opcode);
+    throw "Unreachable code (mem)!";
     return 0;
 }
 
@@ -434,20 +419,20 @@ int CPU::exec_CALL(word opcode) {
     switch (extract_bitfield(opcode, 12, 9)) {
     case 0b0000: // call
         assert(extract_bitfield(opcode, 3, 0) == 0b0001);
-        push(PC + 1);
+        push(PC_plus_1());
         PC = destination;
         break;
         
     case 0b0001: // syscall
         assert(extract_bitfield(opcode, 3, 0) == 0b0001);
-        push(PC + 1);
+        push(PC_plus_1());
         PC = destination;
         user_mode = false;
         break;
 
     case 0b0010: // enter
         assert(extract_bitfield(opcode, 3, 0) == 0b0001);
-        push(PC + 1);
+        push(PC_plus_1());
         PC = destination;
         user_mode = true;
         break;
@@ -478,22 +463,18 @@ int CPU::exec_CALL(word opcode) {
         }
         else {
             // 0b01001 -> illegal
-            ILLEGAL_OP(opcode);
+            throw "Illegal opcode";
         }
         break;
     
     default:
-        ILLEGAL_OP(opcode);
+        throw "Illegal opcode";
         break;
     }
 
     return cycles;
 }
 
-// Called whenever the CPU attempts to execute an illegal opcode
-void CPU::ILLEGAL_OP(word opcode) {
-    ERROR("Instruction 0x%X not handled!\n", opcode);
-}
 
 
 
@@ -508,31 +489,56 @@ void CPU::reset() {
 // Run CPU for a number of clock cycles. Instructions are atomic, the function  
 // returns how many extra cycles were needed to finish the last instruction.
 int32_t CPU::execute(int32_t cycles) {
+    int used_cycles;
+
     while (cycles > 0) {
-        int used_cycles;
+        try {
+            // Fetch opcode
+            word opcode = user_mode ? ram[PC_plus_1()] : rom_h[PC];
 
-        // Fetch opcode
-        word opcode = user_mode ? ram[PC++] : rom_h[PC];
+            if (IRQ) {
+                // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
+                try { push(PC_plus_1()); }
+                catch (const char* msg) {
+                    Terminal::destroy();
+                    fprintf(stderr, "Error while processing interrupt:\n%s\n", msg);
+                    exit(EXIT_FAILURE);
+                }
+                
+                PC = user_mode ? 0x0011 : 0x0013;
+                user_mode = false;  // Jump to ROM
+                used_cycles = 3;    // Takes 3 clock cycles in both cases
+                IRQ = false;
+            }
+            else {
+                // Execute instruction normally
+                used_cycles = exec_INSTR(opcode);
+            }
 
-        if (IRQ) {
-            // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
-            push(PC+1);
-            PC = user_mode ? 0x0011 : 0x0013;
+            // Decrement the remaining cycles
+            cycles -= used_cycles;
 
-            user_mode = false;  // Jump to ROM
-            used_cycles = 3;    // Takes 3 clock cycles in both cases
-            IRQ = false;
+            // Tick the hardware timer. If an overflow occurs, trigger interrupt
+            if (timer.tick(used_cycles)) IRQ = true;
         }
-        else {
-            // Execute instruction normally
-            used_cycles = exec_INSTR(opcode);
+        catch(const char* msg) {
+            // Delete ncurses window
+            Terminal::destroy();
+
+            if (user_mode) {
+                // Running from RAM: PC gets autoincremented when opcode is fetched
+                PC--;
+                fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
+                        PC, uint(ram[PC]), uint(ram[PC+1]), msg);
+            }
+            else {
+                // Running from ROM: No need to decrement PC
+                fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
+                        PC, uint(rom_h[PC]), uint(rom_l[PC]), msg);
+            }
+
+            exit(EXIT_FAILURE);
         }
-
-        // Decrement the remaining cycles
-        cycles -= used_cycles;
-
-        // Tick the hardware timer. If an overflow occurs, trigger interrupt
-        if (timer.tick(used_cycles)) IRQ = true;
     }
 
     // If finishing an instruction took some extra cycles, return how many

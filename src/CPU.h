@@ -53,9 +53,6 @@ private:
 
     // HELPER FUNCTIONS
 
-    // Prints a formatted error message and terminates the program
-    void ERROR(const char *msg, ...);
-    
     // Returns the value encoded between bit_left and bit_right (both included)
     static inline word extract_bitfield(word original, byte bit_left, byte bit_right);
 
@@ -70,6 +67,9 @@ private:
 
     // Pop some data from the stack
     inline word pop();
+
+    // Equivalent to PC++, but if PC overflows an exception is thrown
+    inline word PC_plus_1();
 
     // Returns the result of an ALU operation, given the funct bits and the 2 operands
     word ALU_result(byte funct, word A, word B);
@@ -104,9 +104,6 @@ private:
 
     // Execute a call/ret operation. Returns the used cycles
     int exec_CALL(word opcode);
-
-    // Called whenever the CPU attempts to execute an illegal opcode
-    void ILLEGAL_OP(word opcode);
 
 
 public:

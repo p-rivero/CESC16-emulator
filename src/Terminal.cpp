@@ -6,7 +6,7 @@ Terminal::Terminal(){
     mainwin = initscr();
     if (mainwin == NULL) {
         fprintf(stderr, "Error initializing screen!\n");
-        exit(127);
+        exit(EXIT_FAILURE);
     }
 
     noecho();   // Turn off key echoing
@@ -54,7 +54,7 @@ bool Terminal::update_input() {
     if (current_input != 0) return false;
 
     int ch = getch();
-    if (ch == ERR) return false; 
+    if (ch == ERR) return false;
 
     switch (ch) {
         case KEY_END: // END: Terminate execution
@@ -67,10 +67,15 @@ bool Terminal::update_input() {
         // Todo: add the rest of special keys
         
         default:
+            // UTF-8 encoded characters, ignore them by default
+            if (ch == 0xC2 or ch == 0xC3) {
+                assert(getch());
+                return false;
+            }
             // Make sure all special keys have been catched
-            if (ch & 0xFFFFFF00) {
+            if (ch > 0x7F) {
                 destroy(); // Destroy terminal
-                fprintf(stderr, "ERROR - Uncatched key: %s (0x%8X)\n", keyname(ch), ch);
+                fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
                 exit(EXIT_FAILURE);
             }
             current_input = ch;  // Else send regular input

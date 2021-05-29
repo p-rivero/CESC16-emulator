@@ -70,9 +70,11 @@ MemCell& Ram::operator[](word addr) {
     if (addr < 0xFF00) return Mem::operator[](addr);
 
     // FF00-FFFF: MMIO
-    else if (addr == 0xFF00) return *Port0;
-    else if (addr == 0xFF40) return *Port1;
-    else if (addr == 0xFF80) return *Port2;
-    else if (addr == 0xFFC0) return *Port3;
-    else return Mem::operator[](addr); // Todo: print error
+    switch (addr) {
+        case 0xFF00: return *Port0;
+        case 0xFF40: return *Port1;
+        case 0xFF80: return *Port2;
+        case 0xFFC0: return *Port3;
+        default: throw "Invalid memory access";
+    }
 }
