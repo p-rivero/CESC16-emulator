@@ -68,6 +68,10 @@ int main(int argc, char **argv) {
     // Schedule timer for calling update() every 16 milliseconds
     timer_start(call_update, 16);
 
+    // Give some time for the ncurses window to initialize.
+    // Otherwise, if the program sends outputs too soon, the first chars wouldn't be displayed
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
     // Execute program
     while (true) {
         cpu->execute(50);

@@ -24,6 +24,7 @@ public:
     }
 
     static void destroy() {
+        term->flush(); // Discard any buffered outputs
         delete term;
         term = NULL;
     }

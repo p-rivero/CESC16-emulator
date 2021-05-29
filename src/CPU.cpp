@@ -492,53 +492,44 @@ int32_t CPU::execute(int32_t cycles) {
     int used_cycles;
 
     while (cycles > 0) {
-        try {
-            // Fetch opcode
-            word opcode = user_mode ? ram[PC_plus_1()] : rom_h[PC];
-
-            if (IRQ) {
-                // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
-                try { push(PC_plus_1()); }
-                catch (const char* msg) {
-                    Terminal::destroy();
-                    fprintf(stderr, "Error while processing interrupt:\n%s\n", msg);
-                    exit(EXIT_FAILURE);
-                }
-                
-                PC = user_mode ? 0x0011 : 0x0013;
-                user_mode = false;  // Jump to ROM
-                used_cycles = 3;    // Takes 3 clock cycles in both cases
-                IRQ = false;
-            }
-            else {
-                // Execute instruction normally
-                used_cycles = exec_INSTR(opcode);
-            }
-
-            // Decrement the remaining cycles
-            cycles -= used_cycles;
-
-            // Tick the hardware timer. If an overflow occurs, trigger interrupt
-            if (timer.tick(used_cycles)) IRQ = true;
+        
+        // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
+        if (IRQ) try {
+            push(PC);
+            PC = user_mode ? 0x0011 : 0x0013;
+            user_mode = false;  // Jump to ROM
+            used_cycles = 3;    // Takes 3 clock cycles in both cases
+            IRQ = false;
+            if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
-        catch(const char* msg) {
-            // Delete ncurses window
+        catch (const char* msg) {
             Terminal::destroy();
+            fprintf(stderr, "Error while processing interrupt:\n%s\n", msg);
+            exit(EXIT_FAILURE);
+        }
 
+        // EXECUTE INSTRUCTION NORMALLY
+        else try {
+            word opcode = user_mode ? ram[PC_plus_1()] : rom_h[PC];
+            used_cycles = exec_INSTR(opcode);
+            if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
+        }
+        catch (const char* msg) {
+            Terminal::destroy();
             if (user_mode) {
-                // Running from RAM: PC gets autoincremented when opcode is fetched
+                // Running from RAM: PC got autoincremented when opcode was fetched
                 PC--;
-                fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
-                        PC, uint(ram[PC]), uint(ram[PC+1]), msg);
+                fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n", PC, uint(ram[PC]), uint(ram[PC+1]), msg);
             }
             else {
                 // Running from ROM: No need to decrement PC
-                fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
-                        PC, uint(rom_h[PC]), uint(rom_l[PC]), msg);
+                fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n", PC, uint(rom_h[PC]), uint(rom_l[PC]), msg);
             }
-
             exit(EXIT_FAILURE);
         }
+
+        // Decrement the remaining cycles
+        cycles -= used_cycles;
     }
 
     // If finishing an instruction took some extra cycles, return how many
