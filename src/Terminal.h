@@ -5,21 +5,37 @@
 
 #include <curses.h>
 #include <termios.h>
+#include <signal.h>
+#include <sys/ioctl.h>
+
 
 
 class Terminal {
 
 private:
     static Terminal *term;
-    WINDOW *mainwin;
+    WINDOW *mainwin, *term_screen;
     byte current_input = 0;
+
+    static const int START_Y = 1;
+    static const int START_X = 1;
 
     Terminal();
     ~Terminal();
+    // Utilities
+    static void fatal_error(const char* msg);
+    static void draw_rectangle(int y1, int x1, int y2, int x2, const char *text);
+    static void sig_handler(int sig);
+    static void size_check();
 
 public:
+    static const int ROWS = 25;
+    static const int COLS = 40;
+
     static Terminal *initialize() {
         if (term == NULL) term = new Terminal;
+        // Make sure window is big enough
+        size_check();
         return term;
     }
 

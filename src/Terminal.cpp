@@ -2,26 +2,70 @@
 
 Terminal *Terminal::term = NULL;
 
-Terminal::Terminal(){
-    mainwin = initscr();
-    if (mainwin == NULL) {
-        fprintf(stderr, "Error initializing screen!\n");
-        exit(EXIT_FAILURE);
-    }
+void Terminal::fatal_error(const char* msg) {
+    destroy(); // Destroy terminal
+    fprintf(stderr, "%s\n", msg);
+    exit(EXIT_FAILURE);
+}
 
-    noecho();   // Turn off key echoing
-    keypad(mainwin, TRUE);  // Enable the keypad for non-char keys
-    nodelay(mainwin, TRUE); // Enable non-blocking input
+void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title) {
+    mvhline(y1, x1, 0, x2-x1);
+    mvhline(y2, x1, 0, x2-x1);
+    mvvline(y1, x1, 0, y2-y1);
+    mvvline(y1, x2, 0, y2-y1);
+    mvaddch(y1, x1, ACS_ULCORNER);
+    mvaddch(y2, x1, ACS_LLCORNER);
+    mvaddch(y1, x2, ACS_URCORNER);
+    mvaddch(y2, x2, ACS_LRCORNER);
+    mvprintw(y1, x1+2, " %s ", title);
+}
+
+void Terminal::sig_handler(int sig) { size_check(); }
+
+void Terminal::size_check() {
+    winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+    
+    if (w.ws_row <= ROWS+START_Y) fatal_error("ERROR - Terminal height too small");
+    if (w.ws_col <= COLS+START_X) fatal_error("ERROR - Terminal width too small");
+}
+
+
+Terminal::Terminal(){
+    // Initialize main window
+    mainwin = initscr();
+    if (mainwin == NULL)
+        fatal_error("Error initializing main window!\r");
 
     // Change line endings from CRLF to LF
     struct termios settings;
     tcgetattr(0, &settings);
     settings.c_oflag |= ONLCR; 
     tcsetattr(0, TCSANOW, &settings);
+
+    // Initialize subwindow (terminal output)
+    term_screen = newwin(ROWS, COLS, START_Y, START_X);
+    if (term_screen == NULL)
+        fatal_error("Error initializing subwindow!");
+
+    noecho(); // Turn off key echoing
+    keypad(mainwin, TRUE); // Enable the keypad for non-char keys
+    nodelay(mainwin, TRUE); // Enable non-blocking input
+    scrollok(term_screen, true); // Enable scrolling for subwindow
+
+    // SIGWINCH is triggered whenever the user resizes the window
+    if (signal(SIGWINCH, sig_handler) == SIG_ERR)
+        fatal_error("Error: Couldn't catch SIGWINCH!");
+
+    // Draw frame around subwindow
+    draw_rectangle(START_Y-1, START_X-1, ROWS+START_Y, COLS+START_X, "Terminal output");
+    refresh();
+    wrefresh(term_screen);
 }
 
 Terminal::~Terminal(){
     // Clean up
+    delwin(term_screen);
     delwin(mainwin);
     endwin();
     refresh();
@@ -30,12 +74,14 @@ Terminal::~Terminal(){
 
 // Output a char
 void Terminal::output(word data) {
-    printf("%c", char(data));
+    wprintw(term_screen, "%c", char(data));
 }
 
 // Flush the output stream
 void Terminal::flush() {
-    fflush(stdout);
+    curs_set(0);
+    wrefresh(term_screen);
+    curs_set(1);
 }
 
 // Get the current input byte
