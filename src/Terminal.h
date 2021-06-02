@@ -16,9 +16,9 @@ private:
     static Terminal *term;
     WINDOW *mainwin, *term_screen, *stat_screen;
     byte current_input = 0;
+    bool busy = false;
 
-    static const int R_STATUS = 25;
-    static const int C_STATUS = 7;
+    static const int COLS_STATUS = 15;
 
     Terminal();
     ~Terminal();
@@ -47,6 +47,8 @@ public:
 
     // Output a char
     void output(word data);
+    // Output a char
+    void display_status(word PC, const StatusFlags& flg, Regfile& regs);
     // Flush the output stream
     void flush();
 

@@ -9,17 +9,6 @@
 class CPU {
 
 private:
-
-    // Flags / Status register
-    struct StatusFlags {
-        bool Z : 1; // Zero flag
-        bool C : 1; // Carry flag
-        bool V : 1; // Overflow flag
-        bool S : 1; // Negative/Sign flag
-    };
-
-
-
     word PC;                    // Program Counter
     Regfile regs;               // Register file
     Reg* const SP = &regs[1];   // Direct access to SP
@@ -27,7 +16,7 @@ private:
     // Flags register
     union {
         byte FLG;
-        CPU::StatusFlags Flags;
+        StatusFlags Flags;
     };
     
 

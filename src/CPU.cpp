@@ -539,6 +539,7 @@ int32_t CPU::execute(int32_t cycles) {
 // Called at regular intervals for updating the UI and getting input
 void CPU::update() {
     // Flush the output stream
+    terminal->display_status(PC, Flags, regs);
     terminal->flush();
 
     // If a new key has been pressed, trigger interrupt

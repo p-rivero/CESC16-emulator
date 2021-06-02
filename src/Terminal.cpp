@@ -26,8 +26,8 @@ void Terminal::size_check() {
     winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     
-    if (w.ws_row <= ROWS+R_STATUS+3) fatal_error("ERROR - Terminal height too small");
-    if (w.ws_col <= COLS+C_STATUS+3) fatal_error("ERROR - Terminal width too small");
+    if (w.ws_row <= ROWS+1) fatal_error("ERROR - Terminal height too small");
+    if (w.ws_col <= COLS+COLS_STATUS+4) fatal_error("ERROR - Terminal width too small");
 }
 
 
@@ -49,7 +49,7 @@ Terminal::Terminal(){
         fatal_error("Error initializing subwindow!");
 
     // Initialize subwindow (status)
-    stat_screen = newwin(R_STATUS, C_STATUS, ROWS+2, COLS+2);
+    stat_screen = newwin(ROWS, COLS_STATUS, 1, COLS+4);
     if (stat_screen == NULL)
         fatal_error("Error initializing subwindow!");
 
@@ -64,9 +64,10 @@ Terminal::Terminal(){
 
     // Draw frames around subwindows
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
-    draw_rectangle(ROWS+2, COLS+2, ROWS+R_STATUS+3, COLS+C_STATUS+3, "Status");
+    draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
     refresh();
     wrefresh(term_screen);
+    wrefresh(stat_screen);
 }
 
 Terminal::~Terminal(){
@@ -80,14 +81,33 @@ Terminal::~Terminal(){
 
 // Output a char
 void Terminal::output(word data) {
+    while (busy);
+    // Todo: fix visual bugs
     wprintw(term_screen, "%c", char(data));
+}
+
+void Terminal::display_status(word PC, const StatusFlags& flg, Regfile& regs) {
+    busy = true;
+    curs_set(0);
+    wmove(stat_screen, 0, 0); // Set cursor to beginning of window
+
+    wrefresh(stat_screen);
+    wprintw(stat_screen, " PC=0x%04X\n", PC);
+    wrefresh(stat_screen);
+    wprintw(stat_screen, " Flags: %c%c%c%c\n\n", flg.Z?'Z':'.', flg.C?'C':'.', flg.V?'V':'.', flg.S?'S':'.');
+
+    for (uint i = 1; i < 16; i++) {
+        wrefresh(stat_screen);
+        wprintw(stat_screen, " %s=0x%04X\n", regs.ABI_names[i], word(regs[i]));
+    }
 }
 
 // Flush the output stream
 void Terminal::flush() {
-    curs_set(0);
+    wrefresh(stat_screen);
     wrefresh(term_screen);
     curs_set(1);
+    busy = false;
 }
 
 // Get the current input byte

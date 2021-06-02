@@ -25,6 +25,14 @@ public:
     virtual MemCell& operator=(word rhs);
 };
 
+// Flags / Status register
+struct StatusFlags {
+    bool Z : 1; // Zero flag
+    bool C : 1; // Carry flag
+    bool V : 1; // Overflow flag
+    bool S : 1; // Negative/Sign flag
+};
+
 
 
 class Regfile {
@@ -33,6 +41,8 @@ private:
     Reg Data[REGFILE_SZ];
 
 public:
+    const char* ABI_names[16] = {"zero", "sp", "t0", "t1", "t2", "t3", "t4",
+        "v0", "a0", "a1", "a2", "s0", "s1", "s2", "s3", "s4"};
     Regfile();
     Reg& operator[](byte addr);
 };
