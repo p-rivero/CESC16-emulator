@@ -14,11 +14,11 @@ class Terminal {
 
 private:
     static Terminal *term;
-    WINDOW *mainwin, *term_screen;
+    WINDOW *mainwin, *term_screen, *stat_screen;
     byte current_input = 0;
 
-    static const int START_Y = 1;
-    static const int START_X = 1;
+    static const int R_STATUS = 25;
+    static const int C_STATUS = 7;
 
     Terminal();
     ~Terminal();

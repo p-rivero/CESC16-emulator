@@ -26,8 +26,8 @@ void Terminal::size_check() {
     winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     
-    if (w.ws_row <= ROWS+START_Y) fatal_error("ERROR - Terminal height too small");
-    if (w.ws_col <= COLS+START_X) fatal_error("ERROR - Terminal width too small");
+    if (w.ws_row <= ROWS+R_STATUS+3) fatal_error("ERROR - Terminal height too small");
+    if (w.ws_col <= COLS+C_STATUS+3) fatal_error("ERROR - Terminal width too small");
 }
 
 
@@ -44,21 +44,27 @@ Terminal::Terminal(){
     tcsetattr(0, TCSANOW, &settings);
 
     // Initialize subwindow (terminal output)
-    term_screen = newwin(ROWS, COLS, START_Y, START_X);
+    term_screen = newwin(ROWS, COLS, 1, 1);
     if (term_screen == NULL)
+        fatal_error("Error initializing subwindow!");
+
+    // Initialize subwindow (status)
+    stat_screen = newwin(R_STATUS, C_STATUS, ROWS+2, COLS+2);
+    if (stat_screen == NULL)
         fatal_error("Error initializing subwindow!");
 
     noecho(); // Turn off key echoing
     keypad(mainwin, TRUE); // Enable the keypad for non-char keys
     nodelay(mainwin, TRUE); // Enable non-blocking input
-    scrollok(term_screen, true); // Enable scrolling for subwindow
+    scrollok(term_screen, true); // Enable scrolling for terminal subwindow
 
     // SIGWINCH is triggered whenever the user resizes the window
     if (signal(SIGWINCH, sig_handler) == SIG_ERR)
         fatal_error("Error: Couldn't catch SIGWINCH!");
 
-    // Draw frame around subwindow
-    draw_rectangle(START_Y-1, START_X-1, ROWS+START_Y, COLS+START_X, "Terminal output");
+    // Draw frames around subwindows
+    draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
+    draw_rectangle(ROWS+2, COLS+2, ROWS+R_STATUS+3, COLS+C_STATUS+3, "Status");
     refresh();
     wrefresh(term_screen);
 }
