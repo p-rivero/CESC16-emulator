@@ -37,12 +37,6 @@ Terminal::Terminal(){
     if (mainwin == NULL)
         fatal_error("Error initializing main window!\r");
 
-    // Change line endings from CRLF to LF
-    struct termios settings;
-    tcgetattr(0, &settings);
-    settings.c_oflag |= ONLCR; 
-    tcsetattr(0, TCSANOW, &settings);
-
     // Initialize subwindow (terminal output)
     term_screen = newwin(ROWS, COLS, 1, 1);
     if (term_screen == NULL)
@@ -66,8 +60,6 @@ Terminal::Terminal(){
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
     refresh();
-    wrefresh(term_screen);
-    wrefresh(stat_screen);
 }
 
 Terminal::~Terminal(){
@@ -76,30 +68,29 @@ Terminal::~Terminal(){
     delwin(mainwin);
     endwin();
     refresh();
+
+    // Change line endings from CRLF to LF
+    struct termios settings;
+    tcgetattr(0, &settings);
+    settings.c_oflag |= ONLCR; 
+    tcsetattr(0, TCSANOW, &settings);
 }
 
 
 // Output a char
 void Terminal::output(word data) {
-    while (busy);
-    // Todo: fix visual bugs
     wprintw(term_screen, "%c", char(data));
 }
 
 void Terminal::display_status(word PC, const StatusFlags& flg, Regfile& regs) {
-    busy = true;
     curs_set(0);
     wmove(stat_screen, 0, 0); // Set cursor to beginning of window
 
-    wrefresh(stat_screen);
     wprintw(stat_screen, " PC=0x%04X\n", PC);
-    wrefresh(stat_screen);
     wprintw(stat_screen, " Flags: %c%c%c%c\n\n", flg.Z?'Z':'.', flg.C?'C':'.', flg.V?'V':'.', flg.S?'S':'.');
 
-    for (uint i = 1; i < 16; i++) {
-        wrefresh(stat_screen);
+    for (uint i = 1; i < 16; i++)
         wprintw(stat_screen, " %s=0x%04X\n", regs.ABI_names[i], word(regs[i]));
-    }
 }
 
 // Flush the output stream
@@ -107,7 +98,6 @@ void Terminal::flush() {
     wrefresh(stat_screen);
     wrefresh(term_screen);
     curs_set(1);
-    busy = false;
 }
 
 // Get the current input byte
@@ -141,7 +131,7 @@ bool Terminal::update_input() {
         default:
             // UTF-8 encoded characters, ignore them by default
             if (ch == 0xC2 or ch == 0xC3) {
-                assert(getch());
+                assert(getch() != ERR);
                 return false;
             }
             // Make sure all special keys have been catched

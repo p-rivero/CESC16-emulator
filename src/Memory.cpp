@@ -40,7 +40,7 @@ Regfile::Regfile() {
     Data[0] = Reg(true);
 }
 Reg& Regfile::operator[](byte addr) {
-    assert(addr < REGFILE_SZ);
+    if (addr >= REGFILE_SZ) throw "Invalid regfile access";
     return Data[addr];
 }
 

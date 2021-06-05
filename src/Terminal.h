@@ -16,7 +16,6 @@ private:
     static Terminal *term;
     WINDOW *mainwin, *term_screen, *stat_screen;
     byte current_input = 0;
-    bool busy = false;
 
     static const int COLS_STATUS = 15;
 
