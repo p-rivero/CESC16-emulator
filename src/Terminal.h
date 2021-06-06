@@ -6,6 +6,7 @@
 #include <curses.h>
 #include <termios.h>
 #include <signal.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 
 
@@ -16,6 +17,9 @@ private:
     static Terminal *term;
     WINDOW *mainwin, *term_screen, *stat_screen;
     byte current_input = 0;
+    sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
+    termios shell_settings; // Terminal settings received from shell
+    termios curses_settings; // Terminal settings after setting up ncurses windows
 
     static const int COLS_STATUS = 15;
 
@@ -26,6 +30,8 @@ private:
     static void draw_rectangle(int y1, int x1, int y2, int x2, const char *text);
     static void sig_handler(int sig);
     static void size_check();
+    void stop();
+    void resume();
 
 public:
     static const int ROWS = 25;
@@ -47,7 +53,7 @@ public:
     // Output a char
     void output(word data);
     // Output a char
-    void display_status(word PC, const StatusFlags& flg, Regfile& regs);
+    void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs);
     // Flush the output stream
     void flush();
 

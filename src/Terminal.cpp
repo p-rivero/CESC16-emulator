@@ -20,7 +20,12 @@ void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title)
     mvprintw(y1, x1+2, " %s ", title);
 }
 
-void Terminal::sig_handler(int sig) { size_check(); }
+void Terminal::sig_handler(int sig) { 
+    if (sig == SIGWINCH) size_check();
+    else if (sig == SIGCONT) term->resume();
+    else if (sig == SIGTSTP) term->stop();
+    else fatal_error("Error: Unknown signal received");
+}
 
 void Terminal::size_check() {
     winsize w;
@@ -30,8 +35,27 @@ void Terminal::size_check() {
     if (w.ws_col <= COLS+COLS_STATUS+4) fatal_error("ERROR - Terminal width too small");
 }
 
+void Terminal::stop() {
+    // Save updated settings for ncurses
+    tcgetattr(0, &curses_settings);
+    // Restore correct settings for shell
+    tcsetattr(0, TCSANOW, &shell_settings);
+    
+    // Call the predefined SIGTSTP handler
+    (ncurses_stop_handler)(SIGTSTP);
+}
+void Terminal::resume() {
+    // Restore correct settings for ncurses
+    tcsetattr(0, TCSANOW, &curses_settings);
+    redrawwin(term_screen);
+    tcsetattr(0, TCSADRAIN, &curses_settings);
+}
+
 
 Terminal::Terminal(){
+    // Save terminal settings
+    tcgetattr(0, &shell_settings);
+
     // Initialize main window
     mainwin = initscr();
     if (mainwin == NULL)
@@ -56,6 +80,13 @@ Terminal::Terminal(){
     if (signal(SIGWINCH, sig_handler) == SIG_ERR)
         fatal_error("Error: Couldn't catch SIGWINCH!");
 
+    ncurses_stop_handler = signal(SIGTSTP, sig_handler);
+    if (ncurses_stop_handler == SIG_ERR)
+        fatal_error("Error: Couldn't catch SIGTSTP!");
+    
+    if (signal(SIGCONT, sig_handler) == SIG_ERR)
+        fatal_error("Error: Couldn't catch SIGCONT!");
+
     // Draw frames around subwindows
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
@@ -69,11 +100,8 @@ Terminal::~Terminal(){
     endwin();
     refresh();
 
-    // Change line endings from CRLF to LF
-    struct termios settings;
-    tcgetattr(0, &settings);
-    settings.c_oflag |= ONLCR; 
-    tcsetattr(0, TCSANOW, &settings);
+    // Restore correct settings for shell
+    tcsetattr(0, TCSANOW, &shell_settings);
 }
 
 
@@ -82,11 +110,13 @@ void Terminal::output(word data) {
     wprintw(term_screen, "%c", char(data));
 }
 
-void Terminal::display_status(word PC, const StatusFlags& flg, Regfile& regs) {
+void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs) {
     curs_set(0);
     wmove(stat_screen, 0, 0); // Set cursor to beginning of window
 
-    wprintw(stat_screen, " PC=0x%04X\n", PC);
+    wprintw(stat_screen, " PC=0x%04X", PC);
+    if (user_mode) wprintw(stat_screen, " [U]");
+    wprintw(stat_screen, "\n Mode: %s\n", user_mode ? "RAM" : "ROM");
     wprintw(stat_screen, " Flags: %c%c%c%c\n\n", flg.Z?'Z':'.', flg.C?'C':'.', flg.V?'V':'.', flg.S?'S':'.');
 
     for (uint i = 1; i < 16; i++)
