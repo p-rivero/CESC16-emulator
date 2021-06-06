@@ -414,7 +414,7 @@ int CPU::exec_CALL(word opcode) {
     // do not increment the PC after executing this instruction
     increment_PC = false;
 
-    int cycles = 3;
+    int cycles = 4;
 
     switch (extract_bitfield(opcode, 12, 9)) {
     case 0b0000: // call
@@ -442,14 +442,14 @@ int CPU::exec_CALL(word opcode) {
             assert(extract_bitfield(opcode, 3, 0) == 0b0001);
             // 0b00110 -> ret
             PC = pop();
-            cycles = 2;
+            cycles = 3;
         }
         else {
             assert(extract_bitfield(opcode, 3, 0) == 0b0001);
             // 0b00111 -> sysret
             PC = pop();
             user_mode = true;
-            cycles = 2;
+            cycles = 3;
         }
         break;
     
@@ -459,7 +459,7 @@ int CPU::exec_CALL(word opcode) {
             // 0b01000 -> exit
             PC = pop();
             user_mode = false;
-            cycles = 2;
+            cycles = 3;
         }
         else {
             // 0b01001 -> illegal
