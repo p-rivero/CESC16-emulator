@@ -97,6 +97,7 @@ private:
 
 public:
     const static word MSB = 0x8000;
+    const static word MAX_TIMESTEPS = 16;
 
     CPU() {
         terminal = Terminal::initialize();

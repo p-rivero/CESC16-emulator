@@ -5,7 +5,9 @@
 #include <thread>
 #include <functional>
 
-const double FREQ = 1600;    // 2 MHz 2000000
+const double FREQ_HZ = 2000000;         // 2000000 Hz (2 MHz) 
+const int32_t DEFAULT_SLEEP_US = 10000; // 10000 microseconds (10 ms)
+const int32_t TEN_RAISED_6 = 1000000;   // 10^6
 
 CPU *cpu;
 
@@ -42,6 +44,35 @@ void timer_start(std::function<void(void)> func, unsigned int interval) {
 
 void call_update() { cpu->update(); }
 
+
+// Execute the program at high clock speeds
+void run_fast(int32_t CYCLES, int32_t sleep_us) {
+    int32_t extra_cycles = 0;
+    while (true) {
+        auto x = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
+        // Store the used extra cycles and subtract them from the next execution
+        extra_cycles = cpu->execute(CYCLES - extra_cycles);
+
+        if (std::chrono::steady_clock::now() > x)
+            fatal_error("Target clock frequency too high for real-time emulation, try a slower clock");
+        
+        std::this_thread::sleep_until(x);
+    }
+}
+
+// Execute the program at low clock speeds
+void run_slow() {
+    while (true) {
+        // Request only 1 clock cycle so that exactly 1 instruction is executed.
+        // Returned value is (required_timesteps - 1): sleep to simulate the instruction timesteps
+        // The execution time of cpu->execute() is negligible at low clock speeds
+        int32_t required_timesteps = cpu->execute(1) + 1;
+        int64_t required_us = TEN_RAISED_6 * required_timesteps / FREQ_HZ;
+        
+        std::this_thread::sleep_for(std::chrono::microseconds(required_us));
+    }
+}
+
 int main(int argc, char **argv) {
     // Check arguments
     if (argc != 2) {
@@ -67,25 +98,11 @@ int main(int argc, char **argv) {
     // Otherwise, if the program sends outputs too soon, the first chars wouldn't be displayed
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
+    // Amount of cycles to execute every (DEFAULT_SLEEP_US) microseconds
+    const int32_t CYCLES = FREQ_HZ * double(DEFAULT_SLEEP_US) / TEN_RAISED_6;
 
-    const int sleep_ms = 10;
-    // Amount of cycles to execute every (sleep_ms) millisecods
-    int CYCLES = FREQ * double(sleep_ms) / 1000.0;
-
-    if (CYCLES<16) fatal_error("Target clock frequency too low"); // Todo: if CYCLES<16, increase sleep_ms and try again
-
-    // Execute program
-    int32_t extra_cycles = 0;
-    while (true) {
-        auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(10);
-        // Store the used extra cycles and subtract them from the next execution
-        extra_cycles = cpu->execute(CYCLES - extra_cycles);
-
-        if (std::chrono::steady_clock::now() > x)
-            fatal_error("Target clock frequency too high for real-time emulation, try a slower clock");
-        
-        std::this_thread::sleep_until(x);
-    }
+    if (CYCLES < CPU::MAX_TIMESTEPS) run_slow();
+    else run_fast(CYCLES, DEFAULT_SLEEP_US);
 
     fatal_error("UNREACHABLE");
 }
