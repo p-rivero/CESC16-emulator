@@ -32,7 +32,7 @@ word CPU::pop() {
     return data;
 }
 
-// Equivalent to PC++, but if PC overflows an exception is thrown
+// Equivalent to ++PC, but if PC overflows an exception is thrown
 word CPU::PC_plus_1() {
     PC++;
     if (PC == 0x0000) throw "PC overflowed";
@@ -510,7 +510,8 @@ int32_t CPU::execute(int32_t cycles) {
 
         // EXECUTE INSTRUCTION NORMALLY
         else try {
-            word opcode = user_mode ? ram[PC_plus_1()] : rom_h[PC];
+            word opcode = user_mode ? ram[PC] : rom_h[PC];
+            if (user_mode) PC_plus_1();
             used_cycles = exec_INSTR(opcode);
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }

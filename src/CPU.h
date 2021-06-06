@@ -57,7 +57,7 @@ private:
     // Pop some data from the stack
     inline word pop();
 
-    // Equivalent to PC++, but if PC overflows an exception is thrown
+    // Equivalent to ++PC, but if PC overflows an exception is thrown
     inline word PC_plus_1();
 
     // Returns the result of an ALU operation, given the funct bits and the 2 operands
