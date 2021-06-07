@@ -529,6 +529,9 @@ int32_t CPU::execute(int32_t cycles) {
             exit(EXIT_FAILURE);
         }
 
+        // Add CPI info
+        cpi_mean.addDataPoint(used_cycles);
+
         // Decrement the remaining cycles
         cycles -= used_cycles;
     }
@@ -540,7 +543,7 @@ int32_t CPU::execute(int32_t cycles) {
 // Called at regular intervals for updating the UI and getting input
 void CPU::update() {
     // Flush the output stream
-    terminal->display_status(PC, user_mode, Flags, regs);
+    terminal->display_status(PC, user_mode, Flags, regs, cpi_mean.getCurrentMean());
     terminal->flush();
 
     // If a new key has been pressed, trigger interrupt

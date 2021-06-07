@@ -52,8 +52,8 @@ public:
 
     // Output a char
     void output(word data);
-    // Output a char
-    void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs);
+    // Output status info
+    void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI);
     // Flush the output stream
     void flush();
 

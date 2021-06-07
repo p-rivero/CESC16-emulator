@@ -110,7 +110,7 @@ void Terminal::output(word data) {
     wprintw(term_screen, "%c", char(data));
 }
 
-void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs) {
+void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {
     curs_set(0);
     wmove(stat_screen, 0, 0); // Set cursor to beginning of window
 
@@ -120,7 +120,9 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
     wprintw(stat_screen, " Flags: %c%c%c%c\n\n", flg.Z?'Z':'.', flg.C?'C':'.', flg.V?'V':'.', flg.S?'S':'.');
 
     for (uint i = 1; i < 16; i++)
-        wprintw(stat_screen, " %s=0x%04X\n", regs.ABI_names[i], word(regs[i]));
+        wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i], word(regs[i]));
+
+    wprintw(stat_screen, "\n CPI: %.4lf\n", CPI);
 }
 
 // Flush the output stream

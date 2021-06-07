@@ -4,6 +4,7 @@
 #include "Memory.h"
 #include "Terminal.h"
 #include "Timer.h"
+#include "ArithmeticMean.h"
 
 // Based on Dave Poo's 6502 emulator
 class CPU {
@@ -23,6 +24,9 @@ private:
     bool user_mode; // true if fetching from RAM, false if fetching from ROM
     bool increment_PC; // If set to false by an instruction, the PC won't be postincremented
     bool IRQ;
+
+    // Store how many cycles the last 500 instructions took in order to compute CPI metrics
+    ArithmeticMean<int> cpi_mean = ArithmeticMean<int>(500);
 
     // Direct access to the terminal for calling update()
     Terminal *terminal;
