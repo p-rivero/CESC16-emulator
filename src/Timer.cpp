@@ -24,6 +24,14 @@ bool Timer::tick(int amount) {
     return false;
 }
 
+// Reset the timer
+void Timer::reset() {
+    timer_count = 0;
+    timer_active = false;
+    just_updated = false;
+}
+
+
 // Set the current timer value
 MemCell& Timer::operator=(word rhs) {
     timer_count &= 0x0000F; // Preserve prescaler bits

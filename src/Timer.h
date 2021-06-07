@@ -33,4 +33,7 @@ public:
     // Tick the timer for a number of clock cycles
     // Returns true only if an overflow has occurred
     bool tick(int amount);
+
+    // Reset the timer
+    void reset();
 };

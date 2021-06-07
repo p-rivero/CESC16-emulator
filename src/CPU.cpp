@@ -80,9 +80,6 @@ word CPU::ALU_result(byte funct, word A, word B) {
     Flags.S = bool(result&MSB);
     // No need to invert carry on sub, in case of borrow the upper bits of true_result are 0xFFFF
 
-    // todo: remove assert
-    assert(Flags.V == ((A&MSB) and (B&MSB) and not (result&MSB)) or (not (A&MSB) and not (B&MSB) and (result&MSB)));
-
     return result;
 }
 
@@ -483,7 +480,7 @@ void CPU::reset() {
     PC = 0x0000;
     user_mode = false;
     IRQ = false;
-    // todo: reset I/O counter
+    timer.reset();
 }
 
 // Run CPU for a number of clock cycles. Instructions are atomic, the function  
