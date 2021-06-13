@@ -161,16 +161,29 @@ bool Terminal::update_input() {
         // Todo: add the rest of special keys
         
         default:
-            // UTF-8 encoded characters, ignore them by default
-            if (ch == 0xC2 or ch == 0xC3) {
-                assert(getch() != ERR);
-                return false;
-            }
             // Make sure all special keys have been catched
-            if (ch > 0x7F) {
+            if (ch > 0xFF) {
                 destroy(); // Destroy terminal
                 fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
                 exit(EXIT_FAILURE);
+            }
+            // 110xxxxx => 2-byte UTF-8 encoded characters, ignore by default
+            if ((ch & 0b11100000) == 0b11000000) {
+                assert(getch() != ERR);
+                return false;
+            }
+            // 1110xxxx => 3-byte UTF-8 encoded characters, ignore by default
+            if ((ch & 0b11110000) == 0b11100000) {
+                assert(getch() != ERR);
+                assert(getch() != ERR);
+                return false;
+            }
+            // 11110xxx => 4-byte UTF-8 encoded characters, ignore by default
+            if ((ch & 0b11111000) == 0b11110000) {
+                assert(getch() != ERR);
+                assert(getch() != ERR);
+                assert(getch() != ERR);
+                return false;
             }
             current_input = ch;  // Else send regular input
             break;
