@@ -11,9 +11,14 @@ CpuController::~CpuController() {
     if (cpu != nullptr) delete cpu;
 }
 
-void CpuController::fatal_error(const char* msg) {
+void CpuController::fatal_error(const char* format, ...) {
     if (cpu != nullptr) delete cpu;
-    fprintf(stderr, "%s\n", msg);
+    // Print error message
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end (args);
+    fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
 }
 
@@ -22,7 +27,7 @@ void CpuController::fatal_error(const char* msg) {
 // Enter program in ROM
 void CpuController::read_ROM_file(const char* filename) {
     std::ifstream hex_file(filename, std::fstream::in);
-    if (not hex_file) fatal_error("ROM file could not be found/opened");   
+    if (not hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);   
 
     uint32_t address = 0;
     word high, low;
