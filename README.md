@@ -18,7 +18,7 @@ The main code of the emulator (`CPU.cpp`) is based on [Dave Poo's 6502 emulator]
 
 
 ## Performance
-The clock frequency of the emulated CPU can be chenged by using the `-f` option.
+The clock frequency of the emulated CPU can be changed by using the `-f` option.
 
 Example (set clock speed to 50 kHz):
 ```
