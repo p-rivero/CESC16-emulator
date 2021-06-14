@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <queue>
 
 
 
@@ -20,6 +21,7 @@ private:
     sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
     termios shell_settings; // Terminal settings received from shell
     termios curses_settings; // Terminal settings after setting up ncurses windows
+    std::queue<byte> input_buffer; // Buffer for the received keystrokes
 
     static const int COLS_STATUS = 15;
 
@@ -30,6 +32,7 @@ private:
     static void draw_rectangle(int y1, int x1, int y2, int x2, const char *text);
     static void sig_handler(int sig);
     static void size_check();
+    static bool is_regular_char(int ch);
     void stop();
     void resume();
 

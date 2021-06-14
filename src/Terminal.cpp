@@ -144,51 +144,69 @@ void Terminal::ack_input() {
 
 // Update the current input byte if needed. Returns true if a new input has been loaded
 bool Terminal::update_input() {
-    // Only get new input if needed
-    if (current_input != 0) return false;
-
-    int ch = getch();
-    if (ch == ERR) return false;
-
-    switch (ch) {
-        case KEY_END: // END: Terminate execution
-            Terminal::destroy();
+    int ch;
+    // First, empty the ncurses buffer and store on local input queue (this way KEY_END gets processed immediately)
+    while ((ch = getch()) != ERR) {
+        // The END key ends execution
+        if (ch == KEY_END) {
+            destroy();
             exit(EXIT_SUCCESS);
-            break;
+        }
 
-        case KEY_HOME: current_input = 23; break;          // From PS2Keyboard.h (Arduino PS/2 controller)
-        case KEY_BACKSPACE: current_input = '\b'; break;   // Backspace: Send \b
-        // Todo: add the rest of special keys
-        
-        default:
-            // Make sure all special keys have been catched
-            if (ch > 0xFF) {
-                destroy(); // Destroy terminal
-                fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
-                exit(EXIT_FAILURE);
-            }
-            // 110xxxxx => 2-byte UTF-8 encoded characters, ignore by default
-            if ((ch & 0b11100000) == 0b11000000) {
-                assert(getch() != ERR);
-                return false;
-            }
-            // 1110xxxx => 3-byte UTF-8 encoded characters, ignore by default
-            if ((ch & 0b11110000) == 0b11100000) {
-                assert(getch() != ERR);
-                assert(getch() != ERR);
-                return false;
-            }
-            // 11110xxx => 4-byte UTF-8 encoded characters, ignore by default
-            if ((ch & 0b11111000) == 0b11110000) {
-                assert(getch() != ERR);
-                assert(getch() != ERR);
-                assert(getch() != ERR);
-                return false;
-            }
-            current_input = ch;  // Else send regular input
-            break;
+        switch (ch) {
+            case KEY_HOME: input_buffer.push(23); break;        // From PS2Keyboard.h (Arduino PS/2 controller)
+            case KEY_BACKSPACE: input_buffer.push('\b'); break; // Backspace: Send \b
+            // Todo: add the rest of special keys
+            
+            // Else, check that all special keys have been catched and send regular input
+            default: if (is_regular_char(ch)) input_buffer.push(ch); break;
+        }
     }
     
+    // Then, get new input only if needed
+    if (current_input == 0 and not input_buffer.empty()) {
+        // Load new input and trigger IRQ
+        current_input = input_buffer.front();
+        input_buffer.pop();
+        return true;
+    }
+    // No new input, don't trigger IRQ
+    return false;
+}
+
+// Returns true if ch is a regular ascii character
+bool Terminal::is_regular_char(int ch) {
+    // Make sure all ncurses special keys have been catched
+    if (ch > 0xFF) {
+        destroy(); // Destroy terminal
+        fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
+        exit(EXIT_FAILURE);
+    }
+
+    // 110xxxxx => 2-byte UTF-8 encoded characters, ignore by default
+    if ((ch & 0b11100000) == 0b11000000) {
+        assert(getch() != ERR);
+        return false;
+    }
+    // 1110xxxx => 3-byte UTF-8 encoded characters, ignore by default
+    if ((ch & 0b11110000) == 0b11100000) {
+        assert(getch() != ERR);
+        assert(getch() != ERR);
+        return false;
+    }
+    // 11110xxx => 4-byte UTF-8 encoded characters, ignore by default
+    if ((ch & 0b11111000) == 0b11110000) {
+        assert(getch() != ERR);
+        assert(getch() != ERR);
+        assert(getch() != ERR);
+        return false;
+    }
+    // The 10xxxxxx range *should* be unused
+    if (ch > 0x7F) {
+        destroy();
+        fprintf(stderr, "UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
+        exit(EXIT_FAILURE);
+    }
     return true;
 }
 
