@@ -2,9 +2,14 @@
 
 Terminal *Terminal::term = NULL;
 
-void Terminal::fatal_error(const char* msg) {
+void Terminal::fatal_error(const char* msg, ...) {
     destroy(); // Destroy terminal
-    fprintf(stderr, "%s\n", msg);
+    // Print error message
+    va_list args;
+    va_start(args, msg);
+    vfprintf(stderr, msg, args);
+    va_end (args);
+    fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
 }
 
@@ -91,6 +96,12 @@ Terminal::Terminal(){
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
     refresh();
+
+    // If -o is used, all CPU outputs are stored in output_file
+    if (Globals::out_file) {
+        output_file = std::ofstream(Globals::out_file, std::fstream::out);
+        if (not output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
+    }
 }
 
 Terminal::~Terminal(){
@@ -102,12 +113,15 @@ Terminal::~Terminal(){
 
     // Restore correct settings for shell
     tcsetattr(0, TCSANOW, &shell_settings);
+
+    if (Globals::out_file) output_file.close();
 }
 
 
 // Output a char
 void Terminal::output(word data) {
     wprintw(term_screen, "%c", char(data));
+    if (Globals::out_file) output_file << char(data);
 }
 
 void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {
@@ -130,6 +144,7 @@ void Terminal::flush() {
     wrefresh(stat_screen);
     wrefresh(term_screen);
     curs_set(1);
+    // Output file doesn't need to be flushed
 }
 
 // Get the current input byte

@@ -4,6 +4,7 @@
 int64_t Globals::CLK_freq = 2000000;    // Default freq: 2000000 Hz (2 MHz)
 bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
 word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 6 instructions
+char *Globals::out_file = NULL;         // Don't write output to any file
 
 
 void print_help(const char* prog_name) {
@@ -28,8 +29,8 @@ int main (int argc, char **argv) {
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // -f uses an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "f:hS")) != -1) {
+    // -f and -o take an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "f:ho:S")) != -1) {
         switch (c) {
         case 'f':   // Set clock frequency
             Globals::CLK_freq = atoll(optarg);
@@ -43,12 +44,16 @@ int main (int argc, char **argv) {
             print_help(argv[0]);    // Print help
             break;
 
+        case 'o':
+            Globals::out_file = optarg; // Output to file
+            break;
+
         case 'S':
             Globals::strict_flg = true; // Strict mode
             break;
             
         case '?':   // Error
-            if (optopt == 'f') {
+            if (optopt == 'f' or optopt == 'o') {
                 // -f argument takes an argument
                 fprintf(stderr, "Error: An argument is required for the option -%c\n", optopt);
             }
@@ -64,7 +69,7 @@ int main (int argc, char **argv) {
         }
     }
 
-    // Todo Add arguments: -d (use given directory (instead of PWD) for Disk emulation) -o (write all CPU output to file)
+    // Todo Add arguments: -d (use given directory (instead of PWD) for Disk emulation)
 
     if (optind == argc) {
         // No non-option argument provided
