@@ -70,6 +70,9 @@ private:
     // Returns true if the jump condition is met and the jump has to be performed
     bool is_condition_met(byte cond);
 
+    // Returns true if the OS is ready to be interrupted (handlers have been initialized)
+    inline bool is_OS_ready();
+
 
 
     // MAIN INSTRUCTION FUNCTIONS

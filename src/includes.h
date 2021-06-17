@@ -17,3 +17,12 @@
 
 using byte = uint8_t;
 using word = uint16_t;
+
+
+// Global variables that may be changed by user options
+namespace Globals {
+    extern bool strict_flg;        // True if -S has been used
+
+    extern int64_t CLK_freq;        // Emulated clock frequency (in Hz)
+    extern word OS_critical_instr;  // Number of critical instructions that the OS must perform before an interrupt
+};

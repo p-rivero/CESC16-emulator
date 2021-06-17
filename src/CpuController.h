@@ -17,7 +17,7 @@ private:
     void timer_start(std::function<void(CPU*)> func, unsigned int interval);
     static void call_update(CPU *cpu);
     void run_fast(int32_t CYCLES, int32_t sleep_us);
-    void run_slow(int64_t CLK_freq);
+    void run_slow();
 
 
 public:
@@ -25,5 +25,5 @@ public:
     ~CpuController();
 
     void read_ROM_file(const char* filename);
-    void execute(int64_t CLK_freq);
+    void execute();
 };

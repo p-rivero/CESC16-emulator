@@ -131,6 +131,13 @@ bool CPU::is_condition_met(byte cond) {
     return false;
 }
 
+// Returns true if the OS is ready to be interrupted (handlers have been initialized)
+bool CPU::is_OS_ready() {
+    // 1. We suppose that all the critical work is done on the first instructions
+    // 2. This extra protection layer isn't present in the real CPU. If strict_flg is set, return true
+    return Globals::strict_flg or (PC >= Globals::OS_critical_instr);
+}
+
 
 
 int CPU::exec_INSTR(word opcode) {
@@ -491,7 +498,7 @@ int32_t CPU::execute(int32_t cycles) {
     while (cycles > 0) {
         
         // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
-        if (IRQ) try {
+        if (IRQ and is_OS_ready()) try {
             push(PC);
             PC = user_mode ? 0x0011 : 0x0013;
             user_mode = false;  // Jump to ROM

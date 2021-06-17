@@ -62,7 +62,7 @@ void CpuController::call_update(CPU *cpu) { cpu->update(); }
 
 
 // Execute the program
-void CpuController::execute(int64_t CLK_freq) {
+void CpuController::execute() {
     // Schedule timer for calling update() every 30 milliseconds
     timer_start(call_update, 30);
 
@@ -71,9 +71,9 @@ void CpuController::execute(int64_t CLK_freq) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // Amount of cycles to execute every (DEFAULT_SLEEP_US) microseconds
-    int32_t CYCLES = (CLK_freq * DEFAULT_SLEEP_US) / TEN_RAISED_6;
+    int32_t CYCLES = (Globals::CLK_freq * DEFAULT_SLEEP_US) / TEN_RAISED_6;
 
-    if (CYCLES < CPU::MAX_TIMESTEPS) run_slow(CLK_freq);
+    if (CYCLES < CPU::MAX_TIMESTEPS) run_slow();
     else run_fast(CYCLES, DEFAULT_SLEEP_US);
 
     fatal_error("UNREACHABLE");
@@ -95,13 +95,13 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
 }
 
 // Execute the program at low clock speeds
-void CpuController::run_slow(int64_t CLK_freq) {
+void CpuController::run_slow() {
     while (true) {
         // Request only 1 clock cycle so that exactly 1 instruction is executed.
         // Returned value is (required_timesteps - 1): sleep to simulate the instruction timesteps
         // The execution time of cpu->execute() is negligible at low clock speeds
         int32_t required_timesteps = cpu->execute(1) + 1;
-        int64_t required_us = TEN_RAISED_6 * required_timesteps / CLK_freq;
+        int64_t required_us = TEN_RAISED_6 * required_timesteps / Globals::CLK_freq;
         
         std::this_thread::sleep_for(std::chrono::microseconds(required_us));
     }

@@ -1,5 +1,11 @@
 #include "CpuController.h"
 
+// Initialize global variables
+int64_t Globals::CLK_freq = 2000000;    // Default freq: 2000000 Hz (2 MHz)
+bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
+word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 6 instructions
+
+
 void print_help(const char* prog_name) {
     printf("CESC16 EMULATOR\n");
     printf("       Run binary files for the CESC16 architecture\n\n");
@@ -15,34 +21,38 @@ void print_help(const char* prog_name) {
 }
 
 int main (int argc, char **argv) {
-    int64_t CLK_freq = 2000000;  // Default freq: 2000000 Hz (2 MHz)
-
     // Variables for getopt
     int c;
-    opterr = 0; // Disable message errors, return '?' instead
+    opterr = false; // Disable errors, return '?' instead
 
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // Capture -f with an argument (':') and -h without argument
-    while ((c = getopt(argc, argv, "f:h")) != -1) {
+    // -f uses an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "f:hS")) != -1) {
         switch (c) {
         case 'f':   // Set clock frequency
-            CLK_freq = atoll(optarg);
-            if (CLK_freq <= 0) {
+            Globals::CLK_freq = atoll(optarg);
+            if (Globals::CLK_freq <= 0) {
                 fprintf(stderr, "Error: Invalid clock frequency, make sure it's a positive integer\n");
                 exit(EXIT_FAILURE);
             }
             break;
 
-        case 'h': print_help(argv[0]);  // Print help
+        case 'h':
+            print_help(argv[0]);    // Print help
+            break;
+
+        case 'S':
+            Globals::strict_flg = true; // Strict mode
+            break;
             
         case '?':   // Error
             if (optopt == 'f') {
                 // -f argument takes an argument
                 fprintf(stderr, "Error: An argument is required for the option -%c\n", optopt);
             }
-            else if (isprint (optopt)) {
+            else if (isprint(optopt)) {
                 // Option is a printable character, but wasn't recognized
                 fprintf(stderr, "Error: Unknown option: -%c\n", optopt);
             }
@@ -53,6 +63,8 @@ int main (int argc, char **argv) {
         default: abort();
         }
     }
+
+    // Todo Add arguments: -d (use given directory (instead of PWD) for Disk emulation) -o (write all CPU output to file)
 
     if (optind == argc) {
         // No non-option argument provided
@@ -70,5 +82,5 @@ int main (int argc, char **argv) {
 
     CpuController cpu;
     cpu.read_ROM_file(argv[optind]);
-    cpu.execute(CLK_freq);
+    cpu.execute();
 }
