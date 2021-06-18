@@ -493,9 +493,16 @@ void CPU::reset() {
 // Run CPU for a number of clock cycles. Instructions are atomic, the function  
 // returns how many extra cycles were needed to finish the last instruction.
 int32_t CPU::execute(int32_t cycles) {
-    int used_cycles;
+    // If the emulator is currently paused, don't do anything
+    if (Globals::is_paused) return 0;
 
     while (cycles > 0) {
+        int used_cycles;
+
+        if (Globals::break_flg and PC == Globals::breakpoint) {
+            Globals::is_paused = true;
+            while (Globals::is_paused);
+        }
         
         // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
         if (IRQ and is_OS_ready()) try {

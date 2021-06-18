@@ -11,7 +11,9 @@ class CpuController {
 private:
     static const int64_t DEFAULT_SLEEP_US = 10000; // 10000 microseconds (10 ms)
     static const int64_t TEN_RAISED_6 = 1000000;   // 10^6
-    CPU *cpu;
+    static CPU *cpu;
+
+    static void sig_handler(int sig);
 
     void fatal_error(const char* msg, ...);
     void timer_start(std::function<void(CPU*)> func, unsigned int interval);

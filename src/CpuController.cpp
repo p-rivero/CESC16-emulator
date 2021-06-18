@@ -1,10 +1,16 @@
 #include "CpuController.h"
 
+bool Globals::is_paused;
+CPU *CpuController::cpu = nullptr;
 
 CpuController::CpuController() {
     // Create and reset CPU
-    cpu = new CPU;
+    if (cpu == nullptr) cpu = new CPU;
     cpu->reset();
+    
+    Globals::is_paused = false;
+    if (signal(SIGINT, sig_handler) == SIG_ERR)
+        fatal_error("Error: Couldn't catch SIGINT!");
 }
 
 CpuController::~CpuController() {
@@ -22,6 +28,14 @@ void CpuController::fatal_error(const char* format, ...) {
     exit(EXIT_FAILURE);
 }
 
+
+void CpuController::sig_handler(int sig) {
+    // ^C ends execution
+    if (sig == SIGINT) {
+        delete cpu;
+        exit(EXIT_SUCCESS);
+    }
+}
 
 
 // Enter program in ROM
@@ -73,7 +87,9 @@ void CpuController::execute() {
     // Amount of cycles to execute every (DEFAULT_SLEEP_US) microseconds
     int32_t CYCLES = (Globals::CLK_freq * DEFAULT_SLEEP_US) / TEN_RAISED_6;
 
-    if (CYCLES < CPU::MAX_TIMESTEPS) run_slow();
+    // If a breakpoint is set, the fast method won't work. The slow method must be used instead.
+    // This means that (on very high clock speeds) the emulator will run slower than expected.
+    if (CYCLES < CPU::MAX_TIMESTEPS or Globals::break_flg) run_slow();
     else run_fast(CYCLES, DEFAULT_SLEEP_US);
 
     fatal_error("UNREACHABLE");

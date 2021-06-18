@@ -137,6 +137,9 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
         wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i], word(regs[i]));
 
     wprintw(stat_screen, "\n CPI: %.4lf\n", CPI);
+
+    if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n Press END key\n", CPI);
+    else wprintw(stat_screen, "\n\n\n", CPI);
 }
 
 // Flush the output stream
@@ -162,13 +165,9 @@ bool Terminal::update_input() {
     int ch;
     // First, empty the ncurses buffer and store on local input queue (this way KEY_END gets processed immediately)
     while ((ch = getch()) != ERR) {
-        // The END key ends execution
-        if (ch == KEY_END) {
-            destroy();
-            exit(EXIT_SUCCESS);
-        }
-
         switch (ch) {
+            // The END key pauses execution
+            case KEY_END: Globals::is_paused = not Globals::is_paused; break;
             case KEY_HOME: input_buffer.push(23); break;        // From PS2Keyboard.h (Arduino PS/2 controller)
             case KEY_BACKSPACE: input_buffer.push('\b'); break; // Backspace: Send \b
             // Todo: add the rest of special keys

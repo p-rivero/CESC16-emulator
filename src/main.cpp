@@ -2,22 +2,29 @@
 
 // Initialize global variables
 int64_t Globals::CLK_freq = 2000000;    // Default freq: 2000000 Hz (2 MHz)
-bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
 word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 6 instructions
+
 char *Globals::out_file = NULL;         // Don't write output to any file
+bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
+bool Globals::break_flg = false;        // By deafult, no breakpoints are set
+int Globals::breakpoint;
 
 
 void print_help(const char* prog_name) {
     printf("CESC16 EMULATOR\n");
-    printf("       Run binary files for the CESC16 architecture\n\n");
-    printf("USAGE:\n");
+    printf("       Run binary files for the CESC16 architecture\n");
+    printf("\nUSAGE:\n");
     printf("       %s [OPTION] FILE\n", prog_name);
-    printf("       FILE is the path to the binary file to be loaded in ROM\n\n");
-    printf("OPTIONS:\n");
-    printf("       -f Frequency of the emulated CPU clock (in Hertz)\n");
-    printf("       -h Show this help message\n\n");
-    printf("EXAMPLE:\n");
-    printf("       %s -f 1000 ./my_file.hex     # Run emulator at 1 kHz\n", prog_name);
+    printf("       FILE is the path to the binary file to be loaded in ROM\n");
+    printf("\nOPTIONS:\n");
+    printf("       -b address   Breakpoint at an address (pause emulator when PC=addr)\n");
+    printf("       -f freq_hz   Frequency of the emulated CPU clock (in Hertz)\n");
+    printf("       -h           Show this help message\n");
+    printf("       -o filename  Output file (dump all CPU outputs to file)\n");
+    printf("       -S           Strict mode (disable extra emulator protections)\n");
+    printf("\nEXAMPLES:\n");
+    printf("       %s -S -f 1000 my_file.hex     # Run emulator at 1 kHz in strict mode\n", prog_name);
+    printf("       %s my_file.hex -o output.txt  # Write all CPU outputs to output.txt\n", prog_name);
     exit(EXIT_SUCCESS);
 }
 
@@ -29,9 +36,18 @@ int main (int argc, char **argv) {
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // -f and -o take an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "f:ho:S")) != -1) {
+    // -b, -f and -o take an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "b:f:ho:S")) != -1) {
         switch (c) {
+        case 'b':
+            Globals::break_flg = true;
+            Globals::breakpoint = atoi(optarg);
+            if (Globals::breakpoint < 0) {
+                fprintf(stderr, "Error: Invalid breakpoint, make sure it's a positive integer\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+        
         case 'f':   // Set clock frequency
             Globals::CLK_freq = atoll(optarg);
             if (Globals::CLK_freq <= 0) {
@@ -53,8 +69,8 @@ int main (int argc, char **argv) {
             break;
             
         case '?':   // Error
-            if (optopt == 'f' or optopt == 'o') {
-                // -f argument takes an argument
+            if (optopt == 'b' or optopt == 'f' or optopt == 'o') {
+                // Options that take an argument
                 fprintf(stderr, "Error: An argument is required for the option -%c\n", optopt);
             }
             else if (isprint(optopt)) {

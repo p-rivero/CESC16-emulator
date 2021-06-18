@@ -23,7 +23,10 @@ using word = uint16_t;
 namespace Globals {
     extern bool strict_flg;         // True if -S has been used
     extern char *out_file;          // If -o has been used, it contains the name of the output file. Otherwise NULL
+    extern bool break_flg;          // True if -b has been used
+    extern int breakpoint;          // If break_flg is set, contains the breakpoint address
 
     extern int64_t CLK_freq;        // Emulated clock frequency (in Hz)
     extern word OS_critical_instr;  // Number of critical instructions that the OS must perform before an interrupt
+    extern bool is_paused;          // True if the emulator is currently paused
 };
