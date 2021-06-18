@@ -27,7 +27,7 @@ void CpuController::fatal_error(const char* format, ...) {
 // Enter program in ROM
 void CpuController::read_ROM_file(const char* filename) {
     std::ifstream hex_file(filename, std::fstream::in);
-    if (not hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);   
+    if (not hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);
 
     uint32_t address = 0;
     word high, low;

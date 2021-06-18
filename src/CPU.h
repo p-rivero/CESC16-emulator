@@ -117,7 +117,7 @@ public:
     // Reset CPU
     void reset();
 
-    // Run CPU for a number of clock cycles. Instructions are atomic, the function  
+    // Run CPU for a number of clock cycles. Instructions are atomic, the function
     // returns how many extra cycles were needed to finish the last instruction.
     int32_t execute(int32_t cycles);
 

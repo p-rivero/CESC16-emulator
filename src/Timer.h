@@ -9,7 +9,7 @@ class Timer : public MemCell {
     emulated atomically and then the timer is incremented by the amount of cycles that the instruction
     would take. This means that an exact simulation of the timer will never be possible.
     Therefore, the goal of this timer is not to report the exact same readings as the actual CPU, but
-    to stay consistent in the long term (avoid drifting away from the correct timer value).      
+    to stay consistent in the long term (avoid drifting away from the correct timer value).
 */
 
 private:
