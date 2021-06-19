@@ -7,7 +7,7 @@ word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 
 char *Globals::out_file = NULL;         // Don't write output to any file
 bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
 bool Globals::break_flg = false;        // By deafult, no breakpoints are set
-int Globals::breakpoint;
+std::vector<word> Globals::breakpoints; // Stores the addresses of all the breakpoints
 
 
 void print_help(const char* prog_name) {
@@ -17,7 +17,7 @@ void print_help(const char* prog_name) {
     printf("       %s [OPTION] FILE\n", prog_name);
     printf("       FILE is the path to the binary file to be loaded in ROM\n");
     printf("\nOPTIONS:\n");
-    printf("       -b address   Breakpoint at an address (pause emulator when PC=addr)\n");
+    printf("       -b address   Add breakpoint at an address (pause emulator when PC=addr)\n");
     printf("       -f freq_hz   Frequency of the emulated CPU clock (in Hertz)\n");
     printf("       -h           Show this help message\n");
     printf("       -o filename  Output file (dump all CPU outputs to file)\n");
@@ -25,7 +25,17 @@ void print_help(const char* prog_name) {
     printf("\nEXAMPLES:\n");
     printf("       %s -S -f 1000 my_file.hex     # Run emulator at 1 kHz in strict mode\n", prog_name);
     printf("       %s my_file.hex -o output.txt  # Write all CPU outputs to output.txt\n", prog_name);
+    printf("       %s my_file.hex -b 0 -b 50     # Run with 2 breakpoints\n", prog_name);
     exit(EXIT_SUCCESS);
+}
+
+void add_breakpoint(int address) {
+    if (address < 0 or address >= 0xFFFF) {
+        fprintf(stderr, "Error: Invalid breakpoint, make sure it's between 0 and 0xFFFF\n");
+        exit(EXIT_FAILURE);
+    }
+    Globals::breakpoints.push_back(address);
+    Globals::break_flg = true;
 }
 
 int main (int argc, char **argv) {
@@ -40,12 +50,7 @@ int main (int argc, char **argv) {
     while ((c = getopt(argc, argv, "b:f:ho:S")) != -1) {
         switch (c) {
         case 'b':
-            Globals::break_flg = true;
-            Globals::breakpoint = atoi(optarg);
-            if (Globals::breakpoint < 0) {
-                fprintf(stderr, "Error: Invalid breakpoint, make sure it's a positive integer\n");
-                exit(EXIT_FAILURE);
-            }
+            add_breakpoint(atoi(optarg));
             break;
         
         case 'f':   // Set clock frequency

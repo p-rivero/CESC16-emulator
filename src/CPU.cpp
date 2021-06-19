@@ -138,6 +138,13 @@ bool CPU::is_OS_ready() {
     return Globals::strict_flg or (PC >= Globals::OS_critical_instr);
 }
 
+bool CPU::is_breakpoint() {
+    for (word addr : Globals::breakpoints)
+        if (PC == addr) return true;
+
+    return false;
+}
+
 
 
 int CPU::exec_INSTR(word opcode) {
@@ -493,16 +500,9 @@ void CPU::reset() {
 // Run CPU for a number of clock cycles. Instructions are atomic, the function  
 // returns how many extra cycles were needed to finish the last instruction.
 int32_t CPU::execute(int32_t cycles) {
-    // If the emulator is currently paused, don't do anything
-    if (Globals::is_paused) return 0;
 
     while (cycles > 0) {
         int used_cycles;
-
-        if (Globals::break_flg and PC == Globals::breakpoint) {
-            Globals::is_paused = true;
-            while (Globals::is_paused);
-        }
         
         // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
         if (IRQ and is_OS_ready()) try {
@@ -538,6 +538,12 @@ int32_t CPU::execute(int32_t cycles) {
                 fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n", PC, uint(rom_h[PC]), uint(rom_l[PC]), msg);
             }
             exit(EXIT_FAILURE);
+        }
+
+        // Check if we landed on a breakpoint
+        if (Globals::break_flg and is_breakpoint()) {
+            Globals::is_paused = true;
+            return 0;
         }
 
         // Add CPI info

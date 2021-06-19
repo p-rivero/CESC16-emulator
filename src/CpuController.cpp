@@ -1,6 +1,6 @@
 #include "CpuController.h"
 
-bool Globals::is_paused;
+volatile bool Globals::is_paused;
 CPU *CpuController::cpu = nullptr;
 
 CpuController::CpuController() {
@@ -87,9 +87,11 @@ void CpuController::execute() {
     // Amount of cycles to execute every (DEFAULT_SLEEP_US) microseconds
     int32_t CYCLES = (Globals::CLK_freq * DEFAULT_SLEEP_US) / TEN_RAISED_6;
 
-    // If a breakpoint is set, the fast method won't work. The slow method must be used instead.
-    // This means that (on very high clock speeds) the emulator will run slower than expected.
-    if (CYCLES < CPU::MAX_TIMESTEPS or Globals::break_flg) run_slow();
+    // Workaround for breakpoints not being checked on the first instruction
+    for (word addr : Globals::breakpoints)
+        if (addr == 0) Globals::is_paused = true;
+    
+    if (CYCLES < CPU::MAX_TIMESTEPS) run_slow();
     else run_fast(CYCLES, DEFAULT_SLEEP_US);
 
     fatal_error("UNREACHABLE");
@@ -99,6 +101,9 @@ void CpuController::execute() {
 void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
     int32_t extra_cycles = 0;
     while (true) {
+        // gcc with -O2 will "optimize" this to an endless loop unless is_paused is marked as volatile
+        while (Globals::is_paused);
+
         auto x = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
         // Store the used extra cycles and subtract them from the next execution
         extra_cycles = cpu->execute(CYCLES - extra_cycles);
@@ -113,6 +118,9 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
 // Execute the program at low clock speeds
 void CpuController::run_slow() {
     while (true) {
+        // gcc with -O2 will "optimize" this to an endless loop unless is_paused is marked as volatile
+        while (Globals::is_paused);
+
         // Request only 1 clock cycle so that exactly 1 instruction is executed.
         // Returned value is (required_timesteps - 1): sleep to simulate the instruction timesteps
         // The execution time of cpu->execute() is negligible at low clock speeds
