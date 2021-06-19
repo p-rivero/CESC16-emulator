@@ -24,6 +24,7 @@ private:
     termios curses_settings; // Terminal settings after setting up ncurses windows
     std::queue<byte> input_buffer; // Buffer for the received keystrokes
     std::ofstream output_file;  // If -o is used, all CPU outputs are stored in output_file
+    bool CPU_input_busy = false;
 
     static const int COLS_STATUS = 15;
 
@@ -66,6 +67,8 @@ public:
     byte read_input() const;
     // Acknowledge the current input byte
     void ack_input();
+    // CPU is ready to be interrupted again
+    void ready_input();
     // Update the current input byte if needed. Returns true if a new input has been loaded
     bool update_input();
 };
@@ -74,6 +77,10 @@ public:
 class Keyboard : public MemCell {
 private:
     Terminal *term;
+
+    // Constants for the keyboard interface
+    static const byte ACK = 0x01;
+    static const byte RDY = 0x02;
 
 public:
     Keyboard();

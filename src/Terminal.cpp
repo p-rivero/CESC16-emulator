@@ -152,12 +152,20 @@ void Terminal::flush() {
 
 // Get the current input byte
 byte Terminal::read_input() const {
+    if (CPU_input_busy) return 0;
     return current_input;
 }
 
 // Acknowledge the current input byte
 void Terminal::ack_input() {
     current_input = 0;
+    CPU_input_busy = true;
+}
+
+// CPU is ready to be interrupted again
+void Terminal::ready_input() {
+    current_input = 0;
+    CPU_input_busy = false;
 }
 
 // Update the current input byte if needed. Returns true if a new input has been loaded
@@ -178,7 +186,7 @@ bool Terminal::update_input() {
     }
     
     // Then, get new input only if needed
-    if (current_input == 0 and not input_buffer.empty()) {
+    if (current_input == 0 and not CPU_input_busy and not input_buffer.empty()) {
         // Load new input and trigger IRQ
         current_input = input_buffer.front();
         input_buffer.pop();
@@ -230,8 +238,11 @@ Keyboard::Keyboard() { term = Terminal::initialize(); }
 
 // WRITE
 MemCell& Keyboard::operator=(word rhs) {
-    // Todo: check if rhs=ACK
-    term->ack_input();
+    byte val = rhs & 0x7F;  // Only lower 7 bits are used
+    if (val == ACK) term->ack_input();
+    else if (val == RDY) term->ready_input();
+    else throw "Invalid keyboard command";
+    
     return *this;
 }
 // READ
