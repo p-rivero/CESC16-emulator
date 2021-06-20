@@ -138,8 +138,8 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
 
     wprintw(stat_screen, "\n CPI: %.4lf\n", CPI);
 
-    if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n Press END key\n", CPI);
-    else wprintw(stat_screen, "\n\n\n", CPI);
+    if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n Resume: F5\n Step: F6\n");
+    else wprintw(stat_screen, "\n\n\n\n", CPI);
 }
 
 // Flush the output stream
@@ -171,14 +171,25 @@ void Terminal::ready_input() {
 // Update the current input byte if needed. Returns true if a new input has been loaded
 bool Terminal::update_input() {
     int ch;
-    // First, empty the ncurses buffer and store on local input queue (this way KEY_END gets processed immediately)
+    // First, empty the ncurses buffer and store on local input queue (this way function keys get processed immediately)
     while ((ch = getch()) != ERR) {
         switch (ch) {
             // The END key pauses execution
-            case KEY_END: Globals::is_paused = not Globals::is_paused; break;
             case KEY_HOME: input_buffer.push(23); break;        // From PS2Keyboard.h (Arduino PS/2 controller)
             case KEY_BACKSPACE: input_buffer.push('\b'); break; // Backspace: Send \b
             // Todo: add the rest of special keys
+
+            case KEY_F(5):
+                // Pause/unpause emulator
+                Globals::is_paused = not Globals::is_paused;
+                Globals::single_step = false;
+                break;
+            case KEY_F(6):
+                // Execute 1 instruction
+                if (not Globals::is_paused) break;  // F6 only works when paused
+                Globals::single_step = true;
+                Globals::is_paused = false;
+                break;
             
             // Else, check that all special keys have been catched and send regular input
             default: if (is_regular_char(ch)) input_buffer.push(ch); break;

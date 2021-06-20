@@ -541,7 +541,7 @@ int32_t CPU::execute(int32_t cycles) {
         }
 
         // Check if we landed on a breakpoint
-        if (Globals::break_flg and is_breakpoint()) {
+        if (Globals::single_step or (Globals::break_flg and is_breakpoint())) {
             Globals::is_paused = true;
             return 0;
         }

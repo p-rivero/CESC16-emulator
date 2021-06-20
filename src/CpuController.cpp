@@ -1,6 +1,7 @@
 #include "CpuController.h"
 
 volatile bool Globals::is_paused;
+volatile bool Globals::single_step;
 CPU *CpuController::cpu = nullptr;
 
 CpuController::CpuController() {
