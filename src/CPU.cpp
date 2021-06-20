@@ -503,6 +503,7 @@ int32_t CPU::execute(int32_t cycles) {
 
     while (cycles > 0) {
         int used_cycles;
+        word old_PC = PC;
         
         // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
         if (IRQ and is_OS_ready()) try {
@@ -529,13 +530,12 @@ int32_t CPU::execute(int32_t cycles) {
         catch (const char* msg) {
             Terminal::destroy();
             if (user_mode) {
-                // Running from RAM: PC got autoincremented when opcode was fetched
-                PC--;
-                fprintf(stderr, "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n", PC, uint(ram[PC]), uint(ram[PC+1]), msg);
+                fprintf(stderr, "Error at PC = 0x%04X [RAM] ", old_PC);
+                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(ram[old_PC]), uint(ram[old_PC+1]), msg);
             }
             else {
-                // Running from ROM: No need to decrement PC
-                fprintf(stderr, "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n", PC, uint(rom_h[PC]), uint(rom_l[PC]), msg);
+                fprintf(stderr, "Error at PC = 0x%04X [ROM] ", old_PC);
+                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(rom_h[old_PC]), uint(rom_l[old_PC]), msg);
             }
             exit(EXIT_FAILURE);
         }
