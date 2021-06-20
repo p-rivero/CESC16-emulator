@@ -339,7 +339,9 @@ int CPU::exec_MEM(word opcode) {
     switch (extract_bitfield(opcode, 12, 8)) {
     case 0b00000: { // movb
         word data = ram[regs[rA] + argument];
-        if (extract_bit(data, 7)) data |= 0xFF00; // Sign extend
+        // Sign extend
+        data &= 0x00FF;
+        if (extract_bit(data, 7)) data |= 0xFF00;
         regs[rD] = data;
         return 3;
     }
