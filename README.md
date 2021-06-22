@@ -26,3 +26,16 @@ Example (set clock speed to 50 kHz):
 ```
 
 When compiled with `-O2`, the emulator was able to run at 50MHz without problems on my PC, so it's safe to assume that the emulator is able to run faster than the real CPU will ever do.
+
+## Breakpoints
+You can pause the emulator at any time by pressing the `F5` key.
+
+You can also set breakpoints by using the `-b` option followed by an address **in hex format** (without the `0x`). The emulator will be paused *before* running the instruction at the specified position (PC).
+The emulator supports an arbitrary number of breakpoints, just use `-b` multiple times.
+
+Example (set breakpoints at `PC=0x0000` and `PC=0x1234`):
+```
+./CESC_Emu my_ROM_file.hex -b 0 -b 1234
+```
+
+Once the emulator is paused, you can single-step by pressing the `F6` key (each time it's pressed, exactly 1 instruction is executed).
