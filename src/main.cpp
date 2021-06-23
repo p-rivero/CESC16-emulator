@@ -29,9 +29,17 @@ void print_help(const char* prog_name) {
     exit(EXIT_SUCCESS);
 }
 
-void add_breakpoint(int address) {
+void add_breakpoint(const char *addr) {
+    char *endptr;
+    long address = strtol(addr, &endptr, 16);
+
+    if (*endptr != '\0') {
+        // Not all input could be parsed
+        fprintf(stderr, "Error: Invalid breakpoint [%s], make sure it's a valid hex integer\n", addr);
+        exit(EXIT_FAILURE);
+    }
     if (address < 0 or address >= 0xFFFF) {
-        fprintf(stderr, "Error: Invalid breakpoint, make sure it's between 0 and 0xFFFF\n");
+        fprintf(stderr, "Error: Invalid breakpoint [%s], make sure it's between 0 and 0xFFFF\n", addr);
         exit(EXIT_FAILURE);
     }
     Globals::breakpoints.push_back(address);
@@ -50,7 +58,7 @@ int main (int argc, char **argv) {
     while ((c = getopt(argc, argv, "b:f:ho:S")) != -1) {
         switch (c) {
         case 'b':
-            add_breakpoint(atoi(optarg));
+            add_breakpoint(optarg);
             break;
         
         case 'f':   // Set clock frequency
@@ -102,7 +110,7 @@ int main (int argc, char **argv) {
         // More than 1 non-option argument provided
         fprintf(stderr, "Error: Too many filenames provided\n");
         for (int i = optind; i < argc; i++)
-            printf ("-> %s\n", argv[i]);
+            printf ("-> \"%s\"\n", argv[i]);
         exit(EXIT_FAILURE);
     }
 
