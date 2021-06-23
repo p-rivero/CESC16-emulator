@@ -338,6 +338,7 @@ int CPU::exec_MEM(word opcode) {
 
     switch (extract_bitfield(opcode, 12, 8)) {
     case 0b00000: { // movb
+        throw "MOVB is deprecated and cannot be used";
         word data = ram[regs[rA] + argument];
         // Sign extend
         data &= 0x00FF;
