@@ -21,6 +21,7 @@ CpuController::~CpuController() {
 }
 
 void CpuController::fatal_error(const char* format, ...) {
+    update_mutex.lock();
     if (cpu != nullptr) delete cpu;
     // Print error message
     va_list args;
