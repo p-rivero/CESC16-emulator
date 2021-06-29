@@ -250,9 +250,17 @@ int CPU::exec_ALU_m_op(word opcode) {
         byte rB = extract_bitfield(argument, 3, 0);
         regs[rD] = ALU_result(funct, regs[rA], ram[regs[rB]]);
     }
-    else {
+    else if (addr_mode == 0b10) {
         // Indexed addressing: OP rD, [rA+imm]
-        regs[rD] = ALU_result(funct, regs[rD], ram[regs[rA] + argument]);
+        word address = regs[rA] + argument;
+        regs[rD] = ALU_result(funct, regs[rD], ram[address]);
+        cycles = 5;
+    }
+    else /* addr_mode == 0b11 */ {
+        // Indexed addressing: OP rD, [rA+rB]
+        byte rB = extract_bitfield(argument, 3, 0);
+        word address = regs[rA] + regs[rB];
+        regs[rD] = ALU_result(funct, regs[rD], ram[address]);
         cycles = 5;
     }
     if (funct == 0b000) cycles = 3; // mov always takes 3 cycles
@@ -278,10 +286,18 @@ int CPU::exec_ALU_m_dest(word opcode) {
         byte rB = extract_bitfield(argument, 3, 0);
         ram[regs[rA]] = ALU_result(funct, ram[regs[rA]], regs[rB]);
     }
-    else {
+    else if (addr_mode == 0b10) {
         // Indexed addressing: OP [rA+imm], rB
         byte rB = extract_bitfield(opcode, 7, 4);
         word address = regs[rA] + argument;
+        ram[address] = ALU_result(funct, ram[address], regs[rB]);
+        cycles = 5;
+    }
+    else /* addr_mode == 0b11 */ {
+        // Indexed addressing: OP [rA+rC], rB
+        byte rB = extract_bitfield(opcode, 7, 4);
+        byte rC = extract_bitfield(argument, 3, 0);
+        word address = regs[rA] + regs[rC];
         ram[address] = ALU_result(funct, ram[address], regs[rB]);
         cycles = 5;
     }
