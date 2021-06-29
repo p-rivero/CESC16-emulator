@@ -36,7 +36,7 @@ void Terminal::size_check() {
     winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     
-    if (w.ws_row <= ROWS+1) fatal_error("ERROR - Terminal height too small");
+    if (w.ws_row <= ROWS+4) fatal_error("ERROR - Terminal height too small");
     if (w.ws_col <= COLS+COLS_STATUS+4) fatal_error("ERROR - Terminal width too small");
 }
 
@@ -75,6 +75,11 @@ Terminal::Terminal(){
     stat_screen = newwin(ROWS, COLS_STATUS, 1, COLS+4);
     if (stat_screen == NULL)
         fatal_error("Error initializing subwindow!");
+        
+    // Initialize subwindow (metrics)
+    perf_screen = newwin(1, COLS+COLS_STATUS+3, ROWS+3, 1);
+    if (perf_screen == NULL)
+        fatal_error("Error initializing subwindow!");
 
     noecho(); // Turn off key echoing
     keypad(mainwin, TRUE); // Enable the keypad for non-char keys
@@ -95,6 +100,7 @@ Terminal::Terminal(){
     // Draw frames around subwindows
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
+    draw_rectangle(ROWS+2, 0, ROWS+4, COLS+COLS_STATUS+4, "Performance");
     refresh();
 
     // If -o is used, all CPU outputs are stored in output_file
@@ -136,14 +142,16 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
     for (uint i = 1; i < 16; i++)
         wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i], word(regs[i]));
 
-    wprintw(stat_screen, "\n CPI: %.4lf\n", CPI);
-
-    if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n Resume: F5\n Step: F6\n");
-    else wprintw(stat_screen, "\n\n\n\n", CPI);
+    if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n F5: Resume\n F6: Step\n F7: Cycle = 0\n");
+    else wprintw(stat_screen, "\n\n\n\n\n", CPI);
+    
+    wmove(perf_screen, 0, 0); // Set cursor to beginning of window
+    wprintw(perf_screen, " CPI: %.4lf\tElapsed cycles: %llu\n", CPI, Globals::elapsed_cycles);
 }
 
 // Flush the output stream
 void Terminal::flush() {
+    wrefresh(perf_screen);
     wrefresh(stat_screen);
     wrefresh(term_screen);
     curs_set(1);
@@ -189,6 +197,11 @@ bool Terminal::update_input() {
                 if (not Globals::is_paused) break;  // F6 only works when paused
                 Globals::single_step = true;
                 Globals::is_paused = false;
+                break;
+            case KEY_F(7):
+                // Reset cycle counter
+                if (not Globals::is_paused) break;  // F7 only works when paused
+                Globals::elapsed_cycles = 0;
                 break;
             
             // Else, check that all special keys have been catched and send regular input

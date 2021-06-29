@@ -31,4 +31,5 @@ namespace Globals {
     extern word OS_critical_instr;  // Number of critical instructions that the OS must perform before an interrupt
     extern volatile bool is_paused; // True if the emulator is currently paused
     extern volatile bool single_step;        // True if in single step mode (break on every instruction)
+    extern volatile uint64_t elapsed_cycles; // Store how many cycles the CPU has executed
 };

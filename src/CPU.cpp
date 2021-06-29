@@ -514,6 +514,7 @@ void CPU::reset() {
     user_mode = false;
     IRQ = false;
     timer.reset();
+    Globals::elapsed_cycles = 0;
 }
 
 // Run CPU for a number of clock cycles. Instructions are atomic, the function  
@@ -559,17 +560,20 @@ int32_t CPU::execute(int32_t cycles) {
             exit(EXIT_FAILURE);
         }
 
-        // Check if we landed on a breakpoint
-        if (Globals::single_step or (Globals::break_flg and is_breakpoint())) {
-            Globals::is_paused = true;
-            return 0;
-        }
-
         // Add CPI info
         cpi_mean.addDataPoint(used_cycles);
 
         // Decrement the remaining cycles
         cycles -= used_cycles;
+        
+        // Increment global count to be displayed
+        Globals::elapsed_cycles += used_cycles;
+        
+        // Check if we landed on a breakpoint
+        if (Globals::single_step or (Globals::break_flg and is_breakpoint())) {
+            Globals::is_paused = true;
+            return 0;
+        }
     }
 
     // If finishing an instruction took some extra cycles, return how many

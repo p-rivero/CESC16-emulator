@@ -2,6 +2,7 @@
 
 volatile bool Globals::is_paused;
 volatile bool Globals::single_step;
+volatile uint64_t Globals::elapsed_cycles;
 CPU *CpuController::cpu = nullptr;
 
 CpuController::CpuController() {

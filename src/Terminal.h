@@ -17,7 +17,7 @@ class Terminal {
 
 private:
     static Terminal *term;
-    WINDOW *mainwin, *term_screen, *stat_screen;
+    WINDOW *mainwin, *term_screen, *stat_screen, *perf_screen;
     byte current_input = 0;
     sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
     termios shell_settings; // Terminal settings received from shell
@@ -52,7 +52,7 @@ public:
 
     static void destroy() {
         term->flush(); // Discard any buffered outputs
-        delete term;
+        if (term != NULL) delete term;
         term = NULL;
     }
 
