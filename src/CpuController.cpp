@@ -4,6 +4,7 @@ volatile bool Globals::is_paused;
 volatile bool Globals::single_step;
 volatile uint64_t Globals::elapsed_cycles;
 CPU *CpuController::cpu = nullptr;
+std::mutex CpuController::update_mutex;
 
 CpuController::CpuController() {
     // Create and reset CPU
@@ -73,7 +74,10 @@ void CpuController::timer_start(std::function<void(CPU*)> func, unsigned int int
     }).detach();
 }
 
-void CpuController::call_update(CPU *cpu) { cpu->update(); }
+void CpuController::call_update(CPU *cpu) {
+    std::lock_guard<std::mutex> lock(update_mutex);
+    cpu->update();
+}
 
 
 
@@ -108,7 +112,9 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
 
         auto x = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
         // Store the used extra cycles and subtract them from the next execution
+        update_mutex.lock();
         extra_cycles = cpu->execute(CYCLES - extra_cycles);
+        update_mutex.unlock();
 
         if (std::chrono::steady_clock::now() > x)
             fatal_error("Target clock frequency too high for real-time emulation, try a slower clock");
@@ -126,7 +132,9 @@ void CpuController::run_slow() {
         // Request only 1 clock cycle so that exactly 1 instruction is executed.
         // Returned value is (required_timesteps - 1): sleep to simulate the instruction timesteps
         // The execution time of cpu->execute() is negligible at low clock speeds
+        update_mutex.lock();
         int32_t required_timesteps = cpu->execute(1) + 1;
+        update_mutex.unlock();
         int64_t required_us = TEN_RAISED_6 * required_timesteps / Globals::CLK_freq;
         
         std::this_thread::sleep_for(std::chrono::microseconds(required_us));

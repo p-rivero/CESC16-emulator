@@ -6,12 +6,14 @@
 #include <chrono>
 #include <thread>
 #include <functional>
+#include <mutex>
 
 class CpuController {
 private:
     static const int64_t DEFAULT_SLEEP_US = 10000; // 10000 microseconds (10 ms)
     static const int64_t TEN_RAISED_6 = 1000000;   // 10^6
     static CPU *cpu;
+    static std::mutex update_mutex;
 
     static void sig_handler(int sig);
 
