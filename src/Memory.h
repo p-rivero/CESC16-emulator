@@ -41,8 +41,8 @@ private:
     Reg Data[REGFILE_SZ];
 
 public:
-    const char* ABI_names[16] = {"zero", "sp", "t0", "t1", "t2", "t3", "t4",
-        "v0", "a0", "a1", "a2", "s0", "s1", "s2", "s3", "s4"};
+    const char *ABI_names[16] = {"zero", "sp", "bp", "s0", "s1", "s2", "s3", "s4",
+        "t0", "t1", "t2", "t3", "a0", "a1", "a2", "a3"};
     Regfile();
     Reg& operator[](byte addr);
 };
