@@ -91,6 +91,9 @@ private:
 
     // Execute an ALU operation (destination in memory). Returns the used cycles
     int exec_ALU_m_dest(word opcode);
+    
+    // Execute an ALU operation (destination in memory, immediate operand). Returns the used cycles
+    int exec_ALU_mem_imm(word opcode);
 
     // Execute a bit shift. Returns the used cycles
     int exec_SHFT(word opcode);

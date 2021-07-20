@@ -182,6 +182,11 @@ int CPU::exec_INSTR(word opcode) {
         break;
 
     case 0b100:
+        // ALU operation (destination in memory, immediate operand)
+        used_cycles = exec_ALU_mem_imm(opcode);
+        break;
+    
+    case 0b101:
         // Memory operation
         used_cycles = exec_MEM(opcode);
         break;
@@ -197,7 +202,7 @@ int CPU::exec_INSTR(word opcode) {
         break;
     
     default:
-        throw "Illegal opcode";
+        throw "Unreachable opcode";
         break;
     }
 
@@ -299,6 +304,43 @@ int CPU::exec_ALU_m_dest(word opcode) {
         byte rC = extract_bitfield(argument, 3, 0);
         word address = regs[rA] + regs[rC];
         ram[address] = ALU_result(funct, ram[address], regs[rB]);
+        cycles = 5;
+    }
+    if (funct == 0b000) cycles--; // mov takes 3 cycles (4 cycles in indexed mode)
+
+    return cycles;
+}
+
+// Execute an ALU operation (destination in memory). Returns the used cycles
+int CPU::exec_ALU_mem_imm(word opcode) {
+    byte addr_mode = extract_bitfield(opcode, 12, 11);
+    byte funct = extract_bitfield(opcode, 10, 8);
+    word imm4 = extract_bitfield(opcode, 7, 4);
+    byte rA = extract_bitfield(opcode, 3, 0);
+
+    word argument = fetch_argument();
+    int cycles = 4;
+
+    if (addr_mode == 0b00) {
+        // Direct addressing: OP [Addr16], imm4
+        ram[argument] = ALU_result(funct, ram[argument], imm4);
+        cycles = 5; // Direct addressing is implemented as indexed
+    }
+    else if (addr_mode == 0b01) {
+        // Indirect addressing: OP [rA], Imm16
+        ram[regs[rA]] = ALU_result(funct, ram[regs[rA]], argument);
+    }
+    else if (addr_mode == 0b10) {
+        // Indexed addressing: OP [rA+imm], imm4
+        word address = regs[rA] + argument;
+        ram[address] = ALU_result(funct, ram[address], imm4);
+        cycles = 5;
+    }
+    else /* addr_mode == 0b11 */ {
+        // Indexed addressing: OP [rA+rC], imm4
+        byte rC = extract_bitfield(argument, 3, 0);
+        word address = regs[rA] + regs[rC];
+        ram[address] = ALU_result(funct, ram[address], imm4);
         cycles = 5;
     }
     if (funct == 0b000) cycles--; // mov takes 3 cycles (4 cycles in indexed mode)
