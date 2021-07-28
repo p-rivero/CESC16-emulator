@@ -14,7 +14,7 @@ The main code of the emulator (`CPU.cpp`) is based on [Dave Poo's 6502 emulator]
     ```
 3. The emulator will start running at the default clock speed, make sure the size of the terminal window is big enough to fit all the elements.
 
-    ![Demo](https://github.com/p-rivero/CESC16-emulator/blob/main/demo/demo.png?raw=true)
+    ![Demo](https://github.com/p-rivero/CESC16-emulator/blob/main/demo/demo.gif?raw=true)
 
 
 ## Performance
