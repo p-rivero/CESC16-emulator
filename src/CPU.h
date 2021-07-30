@@ -4,6 +4,7 @@
 #include "Memory.h"
 #include "Terminal.h"
 #include "Timer.h"
+#include "Disk.h"
 #include "ArithmeticMean.h"
 
 // Based on Dave Poo's 6502 emulator
@@ -37,10 +38,12 @@ private:
     Display display;
     // 16-bit timer
     Timer timer;
+    // USB disk
+    Disk disk;
 
     // Memory banks: ROM (32 bit), RAM (16 bit)
     Rom rom_l, rom_h;
-    Ram ram = Ram(keyboard, display, timer, /* Todo: add disk */ timer); 
+    Ram ram = Ram(keyboard, display, timer, disk); // 4 IO devices
 
 
 
