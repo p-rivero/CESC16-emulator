@@ -5,6 +5,7 @@ volatile bool Globals::single_step;
 volatile uint64_t Globals::elapsed_cycles;
 CPU *CpuController::cpu = nullptr;
 std::mutex CpuController::update_mutex;
+std::mutex Globals::kill_mutex;
 
 CpuController::CpuController() {
     // Create and reset CPU
@@ -21,6 +22,7 @@ CpuController::~CpuController() {
 }
 
 void CpuController::fatal_error(const char* format, ...) {
+    _KILL_GUARD
     update_mutex.lock();
     if (cpu != nullptr) delete cpu;
     // Print error message
@@ -36,6 +38,7 @@ void CpuController::fatal_error(const char* format, ...) {
 void CpuController::sig_handler(int sig) {
     // ^C ends execution
     if (sig == SIGINT) {
+        _KILL_GUARD
         delete cpu;
         exit(EXIT_SUCCESS);
     }

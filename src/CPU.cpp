@@ -577,6 +577,7 @@ int32_t CPU::execute(int32_t cycles) {
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
         catch (const char* msg) {
+            _KILL_GUARD
             Terminal::destroy();
             fprintf(stderr, "Error while processing interrupt:\n%s\n", msg);
             exit(EXIT_FAILURE);
@@ -590,6 +591,7 @@ int32_t CPU::execute(int32_t cycles) {
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
         catch (const char* msg) {
+            _KILL_GUARD
             Terminal::destroy();
             if (user_mode) {
                 fprintf(stderr, "Error at PC = 0x%04X [RAM] ", old_PC);

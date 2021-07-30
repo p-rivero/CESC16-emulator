@@ -1,8 +1,11 @@
 #include "Terminal.h"
 
+void destroy_terminal() { Terminal::destroy(); }
+
 Terminal *Terminal::term = NULL;
 
 void Terminal::fatal_error(const char* msg, ...) {
+    _KILL_GUARD
     destroy(); // Destroy terminal
     // Print error message
     va_list args;
@@ -224,6 +227,7 @@ bool Terminal::update_input() {
 bool Terminal::is_regular_char(int ch) {
     // Make sure all ncurses special keys have been catched
     if (ch > 0xFF) {
+        _KILL_GUARD
         destroy(); // Destroy terminal
         fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
         exit(EXIT_FAILURE);
@@ -249,6 +253,7 @@ bool Terminal::is_regular_char(int ch) {
     }
     // The 10xxxxxx range *should* be unused
     if (ch > 0x7F) {
+        _KILL_GUARD
         destroy();
         fprintf(stderr, "UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
         exit(EXIT_FAILURE);

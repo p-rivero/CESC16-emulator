@@ -6,7 +6,6 @@
 #include <chrono>
 #include <thread>
 #include <functional>
-#include <mutex>
 
 class CpuController {
 private:
