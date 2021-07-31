@@ -22,10 +22,12 @@ void print_help(const char* prog_name) {
     printf("       -h           Show this help message\n");
     printf("       -o filename  Output file (dump all CPU outputs to file)\n");
     printf("       -S           Strict mode (disable extra emulator protections)\n");
+    printf("       -t time_us   Set the delay of the terminal (per character, in microseconds)\n");
     printf("\nEXAMPLES:\n");
     printf("       %s -S -f 1000 my_file.hex     # Run emulator at 1 kHz in strict mode\n", prog_name);
     printf("       %s my_file.hex -o output.txt  # Write all CPU outputs to output.txt\n", prog_name);
     printf("       %s my_file.hex -b 0 -b 50     # Run with 2 breakpoints\n", prog_name);
+    printf("       %s my_file.hex -t 1000000     # Very slow terminal: 1 char per sec.\n", prog_name);
     exit(EXIT_SUCCESS);
 }
 
@@ -54,8 +56,8 @@ int main (int argc, char **argv) {
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // -b, -f and -o take an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "b:f:ho:S")) != -1) {
+    // -b, -f, -o and -t take an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "b:f:ho:St:")) != -1) {
         switch (c) {
         case 'b':
             add_breakpoint(optarg);
@@ -81,8 +83,16 @@ int main (int argc, char **argv) {
             Globals::strict_flg = true; // Strict mode
             break;
             
+        case 't':   // Set terminal delay
+            Globals::terminal_delay = atoll(optarg);
+            if (Globals::terminal_delay < 0) {
+                fprintf(stderr, "Error: Invalid terminal delay, make sure it's a positive integer\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+            
         case '?':   // Error
-            if (optopt == 'b' or optopt == 'f' or optopt == 'o') {
+            if (optopt == 'b' or optopt == 'f' or optopt == 'o' or optopt == 't') {
                 // Options that take an argument
                 fprintf(stderr, "Error: An argument is required for the option -%c\n", optopt);
             }

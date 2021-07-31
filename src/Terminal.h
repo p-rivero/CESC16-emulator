@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <queue>
 #include <fstream>
+#include <thread>
 
 
 
@@ -94,6 +95,7 @@ public:
 
 class Display : public MemCell {
 private:
+    word busy_flag = 0;
     Terminal *term;
 
 public:

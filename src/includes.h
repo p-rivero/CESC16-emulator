@@ -31,8 +31,9 @@ namespace Globals {
     extern char *out_file;          // If -o has been used, it contains the name of the output file. Otherwise NULL
     extern bool break_flg;          // True if -b has been used
     extern std::vector<word> breakpoints;   // If break_flg is set, contains the breakpoint address
+    extern int terminal_delay;      // How many microseconds to wait before the output terminal clears the busy flag
 
-    extern std::mutex kill_mutex;   // Set to true in order to signal other threads that they should terminate
+    extern std::mutex kill_mutex;   // Used so that other threads don't keep executing once one thread has been killed
     extern int64_t CLK_freq;        // Emulated clock frequency (in Hz)
     extern word OS_critical_instr;  // Number of critical instructions that the OS must perform before an interrupt
     extern volatile bool is_paused; // True if the emulator is currently paused
