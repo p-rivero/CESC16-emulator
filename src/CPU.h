@@ -3,6 +3,8 @@
 #include "includes.h"
 #include "Memory.h"
 #include "Terminal.h"
+#include "Keyboard.h"
+#include "Display.h"
 #include "Timer.h"
 #include "Disk.h"
 #include "ArithmeticMean.h"

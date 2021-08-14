@@ -10,7 +10,6 @@
 #include <sys/ioctl.h>
 #include <queue>
 #include <fstream>
-#include <thread>
 
 
 
@@ -72,37 +71,4 @@ public:
     void ready_input();
     // Update the current input byte if needed. Returns true if a new input has been loaded
     bool update_input();
-};
-
-
-class Keyboard : public MemCell {
-private:
-    Terminal *term;
-
-    // Constants for the keyboard interface
-    static const byte ACK = 0x01;
-    static const byte RDY = 0x02;
-
-public:
-    Keyboard();
-
-    // WRITE
-    virtual MemCell& operator=(word rhs);
-    // READ
-    virtual operator int() const;
-};
-
-
-class Display : public MemCell {
-private:
-    word busy_flag = 0;
-    Terminal *term;
-
-public:
-    Display();
-
-    // WRITE
-    virtual MemCell& operator=(word rhs);
-    // READ
-    virtual operator int() const;
 };

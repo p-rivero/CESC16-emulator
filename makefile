@@ -6,7 +6,7 @@ BIN_NAME = CESC_Emu
 # $@ = Name of the rule target
 # $< = Name of all the first prerequisite
 
-$(BIN_NAME): src/main.o src/CpuController.o src/CPU.o src/Memory.o src/Terminal.o src/Timer.o src/Disk.o
+$(BIN_NAME): src/main.o src/CpuController.o src/CPU.o src/Memory.o src/Terminal.o src/Keyboard.o src/Display.o src/Timer.o src/Disk.o
 	g++ $(OPTIONS) $^ -o $@ -lncurses -pthread
 
 
@@ -23,6 +23,12 @@ src/Memory.o: src/Memory.cpp src/Memory.h
 	g++ $(OPTIONS) -c $< -o $@
 
 src/Terminal.o: src/Terminal.cpp src/Terminal.h src/Memory.h
+	g++ $(OPTIONS) -c $< -o $@
+
+src/Keyboard.o: src/Keyboard.cpp src/Keyboard.h src/Memory.h
+	g++ $(OPTIONS) -c $< -o $@
+
+src/Display.o: src/Display.cpp src/Display.h src/Memory.h
 	g++ $(OPTIONS) -c $< -o $@
 
 src/Timer.o: src/Timer.cpp src/Timer.h src/Memory.h

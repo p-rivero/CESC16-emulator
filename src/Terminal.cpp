@@ -54,9 +54,10 @@ void Terminal::stop() {
     (ncurses_stop_handler)(SIGTSTP);
 }
 void Terminal::resume() {
+    // TODO: This remains broken, try to fix it
     // Restore correct settings for ncurses
     tcsetattr(0, TCSANOW, &curses_settings);
-    redrawwin(term_screen);
+    redrawwin(mainwin);
     tcsetattr(0, TCSADRAIN, &curses_settings);
 }
 
@@ -135,7 +136,6 @@ void Terminal::output(word data) {
 }
 
 void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {
-    curs_set(0);
     wmove(stat_screen, 0, 0); // Set cursor to beginning of window
 
     wprintw(stat_screen, " PC=0x%04X", PC);
@@ -158,7 +158,6 @@ void Terminal::flush() {
     wrefresh(perf_screen);
     wrefresh(stat_screen);
     wrefresh(term_screen);
-    curs_set(1);
     // Output file doesn't need to be flushed
 }
 
@@ -187,6 +186,7 @@ bool Terminal::update_input() {
     while ((ch = getch()) != ERR) {
         switch (ch) {
             // The END key pauses execution
+            // TODO: update constants in keyboard controller
             case KEY_HOME: input_buffer.push(23); break;        // From PS2Keyboard.h (Arduino PS/2 controller)
             case KEY_BACKSPACE: input_buffer.push('\b'); break; // Backspace: Send \b
             // Todo: add the rest of special keys
@@ -260,50 +260,4 @@ bool Terminal::is_regular_char(int ch) {
         exit(EXIT_FAILURE);
     }
     return true;
-}
-
-
-
-Keyboard::Keyboard() { term = Terminal::initialize(); }
-
-// WRITE
-MemCell& Keyboard::operator=(word rhs) {
-    byte val = rhs & 0x7F;  // Only lower 7 bits are used
-    if (val == ACK) term->ack_input();
-    else if (val == RDY) term->ready_input();
-    else throw "Invalid keyboard command";
-    
-    return *this;
-}
-// READ
-Keyboard::operator int() const {
-    return term->read_input();
-}
-
-
-
-Display::Display() { term = Terminal::initialize(); }
-
-// WRITE
-MemCell& Display::operator=(word rhs) {
-    if (busy_flag != 0 and not Globals::strict_flg) {
-        // If strict mode is not enabled, warn when overwriting the controller input register
-        throw "Terminal: attempting to output while the controller was busy";
-    }
-    if (Globals::terminal_delay > 0) {
-        busy_flag = rhs;
-        // VGA terminal can process 1 input every 32 microseconds, wait and clear the flag
-        std::thread([this]() {
-            _KILL_GUARD
-            std::this_thread::sleep_for(std::chrono::microseconds(Globals::terminal_delay));
-            busy_flag = 0;
-        }).detach();
-    }
-    
-    term->output(rhs);
-    return *this;
-}
-// READ
-Display::operator int() const {
-    return busy_flag;
 }
