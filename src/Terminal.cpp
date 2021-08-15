@@ -3,7 +3,6 @@
 void destroy_terminal() { Terminal::destroy(); }
 
 Terminal *Terminal::term = NULL;
-int Globals::terminal_delay = 32; // 32 microseconds
 
 void Terminal::fatal_error(const char* msg, ...) {
     _KILL_GUARD
@@ -161,28 +160,10 @@ void Terminal::flush() {
     // Output file doesn't need to be flushed
 }
 
-// Get the current input byte
-byte Terminal::read_input() const {
-    if (CPU_input_busy) return 0;
-    return current_input;
-}
-
-// Acknowledge the current input byte
-void Terminal::ack_input() {
-    current_input = 0;
-    CPU_input_busy = true;
-}
-
-// CPU is ready to be interrupted again
-void Terminal::ready_input() {
-    current_input = 0;
-    CPU_input_busy = false;
-}
-
-// Update the current input byte if needed. Returns true if a new input has been loaded
-bool Terminal::update_input() {
+// Process ncurses key queue until it's empty (called periodically)
+void Terminal::update_input() {
     int ch;
-    // First, empty the ncurses buffer and store on local input queue (this way function keys get processed immediately)
+    // Empty the ncurses buffer and store on local input queue (this way function keys get processed immediately)
     while ((ch = getch()) != ERR) {
         switch (ch) {
             // The END key pauses execution
@@ -212,16 +193,18 @@ bool Terminal::update_input() {
             default: if (is_regular_char(ch)) input_buffer.push(ch); break;
         }
     }
+}
+
+// Returns the first character in the input queue (and removes it from the queue)
+byte Terminal::get_input() {
+    update_input();
     
-    // Then, get new input only if needed
-    if (current_input == 0 and not CPU_input_busy and not input_buffer.empty()) {
-        // Load new input and trigger IRQ
-        current_input = input_buffer.front();
-        input_buffer.pop();
-        return true;
-    }
-    // No new input, don't trigger IRQ
-    return false;
+    // If the queue is not empty, remove and return the first element
+    if (input_buffer.empty()) return 0;
+    
+    byte input = input_buffer.front();
+    input_buffer.pop();
+    return input;
 }
 
 // Returns true if ch is a regular ascii character

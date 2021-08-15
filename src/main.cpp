@@ -20,6 +20,7 @@ void print_help(const char* prog_name) {
     printf("       -b address   Add breakpoint at an address (pause emulator when PC=addr)\n");
     printf("       -f freq_hz   Frequency of the emulated CPU clock (in Hertz)\n");
     printf("       -h           Show this help message\n");
+    printf("       -k time_us   Set the delay of the keyboard (per key, in microseconds)\n");
     printf("       -o filename  Output file (dump all CPU outputs to file)\n");
     printf("       -S           Strict mode (disable extra emulator protections)\n");
     printf("       -t time_us   Set the delay of the terminal (per character, in microseconds)\n");
@@ -56,8 +57,8 @@ int main (int argc, char **argv) {
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // -b, -f, -o and -t take an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "b:f:ho:St:")) != -1) {
+    // -b, -f, -k, -o and -t take an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "b:f:hk:o:St:")) != -1) {
         switch (c) {
         case 'b':
             add_breakpoint(optarg);
@@ -73,6 +74,14 @@ int main (int argc, char **argv) {
 
         case 'h':
             print_help(argv[0]);    // Print help
+            break;
+            
+        case 'k':   // Set keyboard delay
+            Globals::keyboard_delay = atoll(optarg);
+            if (Globals::keyboard_delay < 0) {
+                fprintf(stderr, "Error: Invalid keyboard delay, make sure it's a positive integer\n");
+                exit(EXIT_FAILURE);
+            }
             break;
 
         case 'o':

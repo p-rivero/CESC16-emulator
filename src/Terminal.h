@@ -62,13 +62,9 @@ public:
     void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI);
     // Flush the output stream
     void flush();
-
-    // Get the current input byte
-    byte read_input() const;
-    // Acknowledge the current input byte
-    void ack_input();
-    // CPU is ready to be interrupted again
-    void ready_input();
-    // Update the current input byte if needed. Returns true if a new input has been loaded
-    bool update_input();
+    
+    // Process ncurses key queue until it's empty (called periodically)
+    void update_input();
+    // Returns the first character in the input queue (and removes it from the queue)
+    byte get_input();
 };

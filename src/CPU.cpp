@@ -631,7 +631,7 @@ void CPU::update() {
     terminal->flush();
 
     // If a new key has been pressed, trigger interrupt
-    if (terminal->update_input()) IRQ = true;
+    if (keyboard.update()) IRQ = true;
 }
 
 
