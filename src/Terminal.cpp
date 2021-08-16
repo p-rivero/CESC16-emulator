@@ -86,8 +86,9 @@ Terminal::Terminal(){
         fatal_error("Error initializing subwindow!");
 
     noecho(); // Turn off key echoing
-    keypad(mainwin, TRUE); // Enable the keypad for non-char keys
-    nodelay(mainwin, TRUE); // Enable non-blocking input
+    keypad(mainwin, true);  // Enable the keypad for non-char keys
+    nodelay(mainwin, true); // Enable non-blocking input
+    ESCDELAY = 0;   // Don't freeze emulator every time ESC is pressed
     scrollok(term_screen, true); // Enable scrolling for terminal subwindow
 
     // SIGWINCH is triggered whenever the user resizes the window
@@ -167,11 +168,23 @@ void Terminal::update_input() {
     while ((ch = getch()) != ERR) {
         switch (ch) {
             // The END key pauses execution
-            // TODO: update constants in keyboard controller
-            case KEY_HOME: input_buffer.push(23); break;        // From PS2Keyboard.h (Arduino PS/2 controller)
-            case KEY_BACKSPACE: input_buffer.push('\b'); break; // Backspace: Send \b
-            // Todo: add the rest of special keys
+            case KEY_BACKSPACE: input_buffer.push('\b'); break;
+            case KEY_PPAGE:     input_buffer.push(0x0B); break;
+            case KEY_NPAGE:     input_buffer.push(0x0C); break;
+            case KEY_HOME:      input_buffer.push('\r'); break;
+            case KEY_IC:        input_buffer.push(0x0E); break;
+            case KEY_END:       input_buffer.push('\e'); break;
+            case KEY_LEFT:      input_buffer.push(0x1C); break;
+            case KEY_RIGHT:     input_buffer.push(0x1D); break;
+            case KEY_DOWN:      input_buffer.push(0x1E); break;
+            case KEY_UP:        input_buffer.push(0x1F); break;
+            case KEY_DC:        input_buffer.push(0x7F); break;
 
+            case KEY_F(1): input_buffer.push(0x0F); break;
+            case KEY_F(2): input_buffer.push(0x10); break;
+            case KEY_F(3): input_buffer.push(0x11); break;
+            case KEY_F(4): input_buffer.push(0x12); break;
+            
             case KEY_F(5):
                 // Pause/unpause emulator
                 Globals::is_paused = not Globals::is_paused;
@@ -188,6 +201,12 @@ void Terminal::update_input() {
                 if (not Globals::is_paused) break;  // F7 only works when paused
                 Globals::elapsed_cycles = 0;
                 break;
+                
+            case KEY_F(8):  input_buffer.push(0x16); break;
+            case KEY_F(9):  input_buffer.push(0x17); break;
+            case KEY_F(10): input_buffer.push(0x18); break;
+            case KEY_F(11): input_buffer.push(0x19); break;
+            case KEY_F(12): input_buffer.push(0x1A); break;
             
             // Else, check that all special keys have been catched and send regular input
             default: if (is_regular_char(ch)) input_buffer.push(ch); break;

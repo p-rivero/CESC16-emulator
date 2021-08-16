@@ -32,7 +32,6 @@ MemCell& Keyboard::operator=(word rhs) {
     }
     else throw "Invalid keyboard command";
     
-    // Todo: create new Globals::keyboard_delay (make all of them 0 by default?)
     if (Globals::keyboard_delay > 0) {
         busy_flag = true; // Writing to the input register sets the busy flag
         // Wait for some time and clear the flag
@@ -49,9 +48,7 @@ MemCell& Keyboard::operator=(word rhs) {
 // READ
 Keyboard::operator int() const {    
     assert(output_reg <= 0x7F);
-    // Todo: make sure this works and return directly
-    byte temp = output_reg | (busy_flag << 7);
-    return temp;
+    return output_reg | (busy_flag << 7);
 }
 
 
