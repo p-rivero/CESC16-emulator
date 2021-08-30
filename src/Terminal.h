@@ -20,7 +20,7 @@ private:
     WINDOW *mainwin, *term_screen, *stat_screen, *perf_screen;
     byte current_input = 0;
     sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
-    termios shell_settings; // Terminal settings received from shell
+    static termios shell_settings; // Terminal settings received from shell
     termios curses_settings; // Terminal settings after setting up ncurses windows
     std::queue<byte> input_buffer; // Buffer for the received keystrokes
     std::ofstream output_file;  // If -o is used, all CPU outputs are stored in output_file
@@ -42,22 +42,14 @@ private:
 public:
     static const int ROWS = 25;
     static const int COLS = 40;
-
-    static Terminal *initialize() {
-        if (term == NULL) term = new Terminal;
-        // Make sure window is big enough
-        size_check();
-        return term;
-    }
-
-    static void destroy() {
-        term->flush(); // Discard any buffered outputs
-        if (term != NULL) delete term;
-        term = NULL;
-    }
-
+    
+    enum color { BLACK=1, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE };
+    
+    static Terminal *initialize();
+    static void destroy();
+    
     // Output a char
-    void output(word data);
+    void print(char c);
     // Output status info
     void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI);
     // Flush the output stream
@@ -67,4 +59,12 @@ public:
     void update_input();
     // Returns the first character in the input queue (and removes it from the queue)
     byte get_input();
+    // Gets the current cursor coordinates (leaves them in row and col)
+    void get_coords(int& row, int& col) const;
+    // Sets the current cursor coordinates
+    void set_coords(int row, int col);
+    // Move the cursor a given row and erase that entire line
+    void clear_line(int row);
+    // Set color of current line
+    void set_color(color c, int row);
 };

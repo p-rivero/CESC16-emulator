@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Terminal.h"
 #include <thread>
 

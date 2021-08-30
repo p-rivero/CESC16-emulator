@@ -3,6 +3,23 @@
 void destroy_terminal() { Terminal::destroy(); }
 
 Terminal *Terminal::term = NULL;
+termios Terminal::shell_settings;
+
+Terminal *Terminal::initialize() {
+    if (term == NULL) term = new Terminal;
+    // Make sure window is big enough
+    size_check();
+    return term;
+}
+void Terminal::destroy() {
+    if (term != NULL) {
+        term->flush(); // Discard any buffered outputs
+        delete term;
+    }
+    // Restore correct settings for shell
+    tcsetattr(0, TCSANOW, &shell_settings);
+    term = NULL;
+}
 
 void Terminal::fatal_error(const char* msg, ...) {
     _KILL_GUARD
@@ -101,6 +118,21 @@ Terminal::Terminal(){
     
     if (signal(SIGCONT, sig_handler) == SIG_ERR)
         fatal_error("Error: Couldn't catch SIGCONT!");
+        
+    // Make sure terminal supports color
+    if (not has_colors())
+        fatal_error("ERROR - Your terminal does not support color");
+    
+    start_color();
+    use_default_colors();   // Allow terminal to keep default background using -1
+    init_pair(color::BLACK, COLOR_BLACK, -1);
+    init_pair(color::RED, COLOR_RED, -1);
+    init_pair(color::GREEN, COLOR_GREEN, -1);
+    init_pair(color::YELLOW, COLOR_YELLOW, -1);
+    init_pair(color::BLUE, COLOR_BLUE, -1);
+    init_pair(color::MAGENTA, COLOR_MAGENTA, -1);
+    init_pair(color::CYAN, COLOR_CYAN, -1);
+    init_pair(color::WHITE, COLOR_WHITE, -1);
 
     // Draw frames around subwindows
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
@@ -122,17 +154,14 @@ Terminal::~Terminal(){
     endwin();
     refresh();
 
-    // Restore correct settings for shell
-    tcsetattr(0, TCSANOW, &shell_settings);
-
     if (Globals::out_file) output_file.close();
 }
 
 
 // Output a char
-void Terminal::output(word data) {
-    wprintw(term_screen, "%c", char(data));
-    if (Globals::out_file) output_file << char(data);
+void Terminal::print(char c) {
+    wprintw(term_screen, "%c", c);
+    if (Globals::out_file) output_file << c;
 }
 
 void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {
@@ -229,12 +258,8 @@ byte Terminal::get_input() {
 // Returns true if ch is a regular ascii character
 bool Terminal::is_regular_char(int ch) {
     // Make sure all ncurses special keys have been catched
-    if (ch > 0xFF) {
-        _KILL_GUARD
-        destroy(); // Destroy terminal
-        fprintf(stderr, "ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
-        exit(EXIT_FAILURE);
-    }
+    if (ch > 0xFF)
+        fatal_error("ERROR - Uncatched key: %s (0x%X)", keyname(ch), ch);
 
     // 110xxxxx => 2-byte UTF-8 encoded characters, ignore by default
     if ((ch & 0b11100000) == 0b11000000) {
@@ -255,11 +280,30 @@ bool Terminal::is_regular_char(int ch) {
         return false;
     }
     // The 10xxxxxx range *should* be unused
-    if (ch > 0x7F) {
-        _KILL_GUARD
-        destroy();
-        fprintf(stderr, "UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
-        exit(EXIT_FAILURE);
-    }
+    if (ch > 0x7F)
+        fatal_error("UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
     return true;
+}
+
+// Gets the current cursor coordinates (leaves them in row and col)
+void Terminal::get_coords(int& row, int& col) const {
+    getyx(term_screen, row, col);
+}
+
+// Sets the current cursor coordinates
+void Terminal::set_coords(int row, int col) {
+    assert(row < ROWS);
+    assert(col < COLS);
+    wmove(term_screen, row, col);
+}
+
+void Terminal::clear_line(int row) {
+    wmove(term_screen, row, 0);
+    wclrtoeol(term_screen);
+}
+
+void Terminal::set_color(color c, int row) {
+    // Set entire line (n=-1) to NORMAL with color c
+    mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, NULL);
+    // wattron(term_screen, COLOR_PAIR(c));
 }
