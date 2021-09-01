@@ -303,7 +303,10 @@ void Terminal::clear_line(int row) {
 }
 
 void Terminal::set_color(color c, int row) {
-    // Set entire line (n=-1) to NORMAL with color c
-    mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, NULL);
-    // wattron(term_screen, COLOR_PAIR(c));
+    // Set color for future sent chars
+    wattron(term_screen, COLOR_PAIR(c));
+    if (row >= 0) {
+        // Set entire line (n=-1) to NORMAL with color c
+        mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, NULL);
+    }
 }

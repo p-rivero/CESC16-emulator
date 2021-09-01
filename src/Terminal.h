@@ -24,8 +24,7 @@ private:
     termios curses_settings; // Terminal settings after setting up ncurses windows
     std::queue<byte> input_buffer; // Buffer for the received keystrokes
     std::ofstream output_file;  // If -o is used, all CPU outputs are stored in output_file
-    bool CPU_input_busy = false;
-
+    
     static const int COLS_STATUS = 15;
 
     Terminal();
@@ -65,6 +64,6 @@ public:
     void set_coords(int row, int col);
     // Move the cursor a given row and erase that entire line
     void clear_line(int row);
-    // Set color of current line
+    // Set color of cursor. If row>=0, also move the cursor to a given row and change its color
     void set_color(color c, int row);
 };

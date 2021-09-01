@@ -4,19 +4,19 @@ int Globals::terminal_delay = 0; // In real hardware this would be 32 microsecon
 
 Display::Display() {
     term = Terminal::initialize();
+    // Initialize color lines to all white
+    for (Terminal::color& c : cram) c = Terminal::color::WHITE;
 }
 
-void Display::set_color(byte row, byte color) {
-    const Terminal::color COLORS[8] = {
-        Terminal::color::BLACK,
-        Terminal::color::BLUE,
-        Terminal::color::GREEN,
-        Terminal::color::CYAN,
-        Terminal::color::RED,
-        Terminal::color::MAGENTA,
-        Terminal::color::YELLOW,
-        Terminal::color::WHITE
+void Display::set_color(byte color, byte row) {
+    assert(row < ROWS);
+    typedef Terminal::color col;
+    const col COLORS[8] = {
+        col::BLACK,  col::BLUE,     col::GREEN,  col::CYAN,
+        col::RED,    col::MAGENTA,  col::YELLOW, col::WHITE
     };
+    // Colors have 2 bits per channel (64 colors), but most terminals
+    // support only 8 colors. Convert them to 1 bit per channel.
     
     byte reduced_color = 0; // 3-bit representation of the 6-bit color
     // If red is 0b10 or 0b11, red bit is set
@@ -26,11 +26,25 @@ void Display::set_color(byte row, byte color) {
     // If blue is 0b10 or 0b11, blue bit is set
     if ((color & 0b000011) >= 0b000010) reduced_color |= 0b001;
     
+    cram[row] = COLORS[reduced_color];
     term->set_color(COLORS[reduced_color], row);
 }
 
 bool Display::is_bit_set(byte data, byte bit_num) {
     return (data & (1 << bit_num));
+}
+
+// Set the color of the line row+1 to the color of the line row
+void Display::propagate_color(int row) {
+    assert(row < ROWS-1);
+    Terminal::color col = cram[row];
+    cram[row+1] = col;
+    term->set_color(col, row+1);
+}
+
+// Sets color for new chars to the color of a certain row
+void Display::update_cursor_color(int row) {
+    term->set_color(cram[row], -1);
 }
 
 // processes a character (see VGA terminal docs)
@@ -42,13 +56,15 @@ void Display::process_char(byte inbyte) {
     // Second byte of a 2-byte sequence
     if (next_byte != FIRST_BYTE) {
         if (next_byte == SET_COLOR_LINE) {
-            set_color(mRow, inbyte & 0x3F);
+            set_color(inbyte & 0x3F, mRow);
         }
         else if (next_byte == SET_COLOR_SCREEN) {
             for (int i = 0; i < ROWS; i++)
-                set_color(i, inbyte & 0x3F);
+                set_color(inbyte & 0x3F, i);
         }
         next_byte = FIRST_BYTE;
+        // Write the new cursor coordinates
+        if (update_coords) term->set_coords(mRow, mCol);
         return;
     }
     
@@ -61,7 +77,11 @@ void Display::process_char(byte inbyte) {
         else if (is_bit_set(inbyte, 5)) {
             // Move to line/row
             byte new_row = inbyte & 0x1F;
-            if (new_row < ROWS) mRow = new_row;
+            if (new_row < ROWS) {
+                mRow = new_row;
+                // New chars are printed in the color of the new line
+                update_cursor_color(mRow);
+            }
         }
         // 0b1001XXXX (bit 4) -> Unused
         else if (is_bit_set(inbyte, 3)) {
@@ -90,6 +110,8 @@ void Display::process_char(byte inbyte) {
                     // Restore cursor pos
                     mRow = old_mRow;
                     mCol = old_mCol;
+                    // New chars are printed in the color of the new line
+                    update_cursor_color(mRow);
                 }
                 else {
                     // Save cursor pos
@@ -105,8 +127,11 @@ void Display::process_char(byte inbyte) {
         else if (is_bit_set(inbyte, 0)) {
             // Reset (set cursor to top-left, clear screen, set color of screen to white)
             mRow = mCol = 0;
-            for (int i = 0; i < ROWS; i++) term->clear_line(i);
-            for (int i = 0; i < ROWS; i++) set_color(i, WHITE);
+            set_color(WHITE, 0);
+            for (int i = 0; i < ROWS; i++) {
+                term->clear_line(i);
+                cram[i] = Terminal::color::WHITE;
+            }
         }
     }
     else {  // ASCII CHAR
@@ -123,12 +148,14 @@ void Display::process_char(byte inbyte) {
                     term->set_coords(mRow, COLS-1);
                     term->print(' ');
                     mCol = COLS-1;
+                    // New chars are printed in the color of the previous line
+                    update_cursor_color(mRow);
                 }
                 break;
             
             case 0x7F:  // Delete: Remove 1 character (move cursor right)
-                term->print(' ');
-                update_coords = false;
+                inbyte = ' ';
+                goto print_inbyte;
                 break;
             
             case '\t':  // Tab: move to next multiple of 4
@@ -142,15 +169,23 @@ void Display::process_char(byte inbyte) {
                 // Also do '\v'
             
             case '\v':  // Vertical tab: LF without CR
-                if (mRow < ROWS-1) mRow++;
-                else term->print('\n'); // Scroll screen
+                if (mRow < ROWS-1) {
+                    // Propagate color to the next line
+                    propagate_color(mRow++);
+                }
+                else {
+                    // Scroll screen (color propagation is implicit)
+                    term->print('\n');
+                    for (int i = 0; i < ROWS-1; i++)
+                        cram[i] = cram[i+1];
+                }
                 break;
                 
             case '\f':  // Form feed: insert a page break
                 mRow = ROWS-1;
                 mCol = 0;
                 for (int i = 0; i < ROWS; i++) term->clear_line(i);
-                set_color(ROWS-1, WHITE);
+                set_color(WHITE, ROWS-1);
                 break;
             
             case '\r':  // Carriage return: move to the beginning of line
@@ -166,17 +201,30 @@ void Display::process_char(byte inbyte) {
                 break;
             
             case 0x1E:  // Move cursor down
-                if (mRow < ROWS-1) mRow++;
+                if (mRow < ROWS-1) update_cursor_color(++mRow);
                 break;
             
             case 0x1F:  // Move cursor up
-                if (mRow > 0) mRow--;
+                if (mRow > 0) update_cursor_color(--mRow);
                 break;
             
             default: // No special character detected.
+                print_inbyte:
                 if (inbyte < ' ') return; // Check if it's printable
-                term->print(inbyte);  // Just print the character
+                int mRow_old = mRow;
+                int mCol_old = mCol;
+                term->print(inbyte);    // Print the character, line may overflow
+                term->get_coords(mRow, mCol);   // Read the new coordinates
                 update_coords = false;
+                
+                if (mRow > mRow_old) { // Line overflowed, no scroll
+                    // Set the color of the new line (mRow) to the color of the old line (mRow-1)
+                    propagate_color(mRow-1);
+                }
+                else if (mCol == 0) { // Line overflowed with scroll, scroll the cram
+                    for (int i = 0; i < ROWS-1; i++)
+                        cram[i] = cram[i+1];
+                }
                 break;
         }
     }
