@@ -62,8 +62,10 @@ public:
     void get_coords(int& row, int& col) const;
     // Sets the current cursor coordinates
     void set_coords(int row, int col);
-    // Move the cursor a given row and erase that entire line
+    // If row>=0, move the cursor to a given row and erase it. Otherwise, clear current line from cursor onward
     void clear_line(int row);
     // Set color of cursor. If row>=0, also move the cursor to a given row and change its color
     void set_color(color c, int row);
+    // Enable or disable cursor blinking
+    void set_cursor_blink(bool blink);
 };

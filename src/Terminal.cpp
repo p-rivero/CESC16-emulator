@@ -107,6 +107,7 @@ Terminal::Terminal(){
     nodelay(mainwin, true); // Enable non-blocking input
     ESCDELAY = 0;   // Don't freeze emulator every time ESC is pressed
     scrollok(term_screen, true); // Enable scrolling for terminal subwindow
+    TABSIZE = 4;
 
     // SIGWINCH is triggered whenever the user resizes the window
     if (signal(SIGWINCH, sig_handler) == SIG_ERR)
@@ -298,15 +299,21 @@ void Terminal::set_coords(int row, int col) {
 }
 
 void Terminal::clear_line(int row) {
-    wmove(term_screen, row, 0);
+    assert(row < ROWS);
+    if (row > 0) wmove(term_screen, row, 0);
     wclrtoeol(term_screen);
 }
 
 void Terminal::set_color(color c, int row) {
+    assert(row < ROWS);
     // Set color for future sent chars
     wattron(term_screen, COLOR_PAIR(c));
     if (row >= 0) {
         // Set entire line (n=-1) to NORMAL with color c
         mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, NULL);
     }
+}
+
+void Terminal::set_cursor_blink(bool blink) {
+    curs_set(blink);
 }

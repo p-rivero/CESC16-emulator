@@ -122,7 +122,7 @@ void Display::process_char(byte inbyte) {
         }
         else if (is_bit_set(inbyte, 1)) {
             // Turn on/off cursor blink
-            throw "Emulator does not allow turning on/off cursor blink";
+            term->set_cursor_blink(is_bit_set(inbyte, 0));
         }
         else if (is_bit_set(inbyte, 0)) {
             // Reset (set cursor to top-left, clear screen, set color of screen to white)
@@ -137,25 +137,16 @@ void Display::process_char(byte inbyte) {
     else {  // ASCII CHAR
         switch (inbyte) {
             case '\b':  // Backspace: Remove 1 character (move cursor left)
-                if (mCol > 0) {
-                    // Remove from the same line
+                if (mCol > 0) { // Backspace doesn't change line
                     term->set_coords(mRow, --mCol);
                     term->print(' ');
-                }
-                else if (mRow > 0) {
-                    // If not on the first line, remove from previous line
-                    mRow--;
-                    term->set_coords(mRow, COLS-1);
-                    term->print(' ');
-                    mCol = COLS-1;
-                    // New chars are printed in the color of the previous line
-                    update_cursor_color(mRow);
                 }
                 break;
             
             case 0x7F:  // Delete: Remove 1 character (move cursor right)
-                inbyte = ' ';
-                goto print_inbyte;
+                if (mCol < COLS-1) term->print(' '); // Del doesn't change line
+                else term->clear_line(-1);
+                update_coords = false;
                 break;
             
             case '\t':  // Tab: move to next multiple of 4
@@ -184,7 +175,10 @@ void Display::process_char(byte inbyte) {
             case '\f':  // Form feed: insert a page break
                 mRow = ROWS-1;
                 mCol = 0;
-                for (int i = 0; i < ROWS; i++) term->clear_line(i);
+                for (int i = 0; i < ROWS; i++) {
+                    term->clear_line(i);
+                    cram[i] = Terminal::color::WHITE;
+                } 
                 set_color(WHITE, ROWS-1);
                 break;
             
@@ -209,10 +203,8 @@ void Display::process_char(byte inbyte) {
                 break;
             
             default: // No special character detected.
-                print_inbyte:
                 if (inbyte < ' ') return; // Check if it's printable
                 int mRow_old = mRow;
-                int mCol_old = mCol;
                 term->print(inbyte);    // Print the character, line may overflow
                 term->get_coords(mRow, mCol);   // Read the new coordinates
                 update_coords = false;
