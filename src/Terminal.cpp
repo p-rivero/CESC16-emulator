@@ -160,9 +160,9 @@ Terminal::~Terminal(){
 
 
 // Output a char
-void Terminal::print(char c) {
-    wprintw(term_screen, "%c", c);
-    if (Globals::out_file) output_file << c;
+void Terminal::print(char c, print_mode mode) {
+    if (mode != ONLY_FILE) wprintw(term_screen, "%c", c);
+    if (Globals::out_file and mode != ONLY_SCREEN) output_file << c;
 }
 
 void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {

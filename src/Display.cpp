@@ -135,16 +135,17 @@ void Display::process_char(byte inbyte) {
         }
     }
     else {  // ASCII CHAR
+        term->print(inbyte, Terminal::print_mode::ONLY_FILE);
         switch (inbyte) {
             case '\b':  // Backspace: Remove 1 character (move cursor left)
                 if (mCol > 0) { // Backspace doesn't change line
                     term->set_coords(mRow, --mCol);
-                    term->print(' ');
+                    term->print(' ', Terminal::print_mode::ONLY_SCREEN);
                 }
                 break;
             
             case 0x7F:  // Delete: Remove 1 character (move cursor right)
-                if (mCol < COLS-1) term->print(' '); // Del doesn't change line
+                if (mCol < COLS-1) term->print(' ', Terminal::print_mode::ONLY_SCREEN);
                 else term->clear_line(-1);
                 update_coords = false;
                 break;
@@ -166,7 +167,7 @@ void Display::process_char(byte inbyte) {
                 }
                 else {
                     // Scroll screen (color propagation is implicit)
-                    term->print('\n');
+                    term->print('\n', Terminal::print_mode::ONLY_SCREEN);
                     for (int i = 0; i < ROWS-1; i++)
                         cram[i] = cram[i+1];
                 }
@@ -205,7 +206,8 @@ void Display::process_char(byte inbyte) {
             default: // No special character detected.
                 if (inbyte < ' ') return; // Check if it's printable
                 int mRow_old = mRow;
-                term->print(inbyte);    // Print the character, line may overflow
+                // Print the character, line may overflow
+                term->print(inbyte, Terminal::print_mode::ONLY_SCREEN);
                 term->get_coords(mRow, mCol);   // Read the new coordinates
                 update_coords = false;
                 

@@ -43,12 +43,13 @@ public:
     static const int COLS = 40;
     
     enum color { BLACK=1, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE };
+    enum print_mode { BOTH, ONLY_SCREEN, ONLY_FILE };
     
     static Terminal *initialize();
     static void destroy();
     
     // Output a char
-    void print(char c);
+    void print(char c, print_mode mode = BOTH);
     // Output status info
     void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI);
     // Flush the output stream
