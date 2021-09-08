@@ -16,8 +16,8 @@ bool Timer::tick(int amount) {
     timer_count += amount;
 
     // Timer would overflow, trigger interrupt
-    if (timer_count >= 0xFFFF0) {
-        timer_count = 0xFFFF0;
+    if (timer_count >= (END_COUNT << 4)) {
+        timer_count = (END_COUNT << 4);
         timer_active = false;
         return true;
     }

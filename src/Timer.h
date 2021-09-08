@@ -13,6 +13,9 @@ class Timer : public MemCell {
 */
 
 private:
+    // Value of the timer when the count ends
+    static const int END_COUNT = 0xF000;   // TODO: Once the hardware bug is fixed, change to 0x10000
+    
     /* Bits 0..3  = Ignored, 16x prescaler for the timer
        Bits 4..20 = The 16-bit timer itself
        Bit 21     = Used for overflow detection */
