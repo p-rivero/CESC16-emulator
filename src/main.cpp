@@ -6,8 +6,9 @@ word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 
 
 char *Globals::out_file = NULL;         // Don't write output to any file
 bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
-bool Globals::break_flg = false;        // By deafult, no breakpoints are set
-std::vector<word> Globals::breakpoints; // Stores the addresses of all the breakpoints
+// Store the addresses of all the breakpoints and exitpoints
+std::vector<word> Globals::breakpoints;
+std::vector<word> Globals::exitpoints;
 
 
 void print_help(const char* prog_name) {
@@ -24,6 +25,7 @@ void print_help(const char* prog_name) {
     printf("       -o filename  Output file (dump all CPU outputs to file)\n");
     printf("       -S           Strict mode (disable extra emulator protections)\n");
     printf("       -t time_us   Set the delay of the terminal (per character, in microseconds)\n");
+    printf("       -x address   Add exit point at an address (exit emulator when PC=addr)\n");
     printf("\nEXAMPLES:\n");
     printf("       %s -S -f 1000 my_file.hex     # Run emulator at 1 kHz in strict mode\n", prog_name);
     printf("       %s my_file.hex -o output.txt  # Write all CPU outputs to output.txt\n", prog_name);
@@ -32,7 +34,7 @@ void print_help(const char* prog_name) {
     exit(EXIT_SUCCESS);
 }
 
-void add_breakpoint(const char *addr) {
+void add_breakpoint(const char *addr, std::vector<word>& breakpoints) {
     char *endptr;
     long address = strtol(addr, &endptr, 16);
 
@@ -45,8 +47,7 @@ void add_breakpoint(const char *addr) {
         fprintf(stderr, "Error: Invalid breakpoint [%s], make sure it's between 0 and 0xFFFF\n", addr);
         exit(EXIT_FAILURE);
     }
-    Globals::breakpoints.push_back(address);
-    Globals::break_flg = true;
+    breakpoints.push_back(address);
 }
 
 int main (int argc, char **argv) {
@@ -57,11 +58,11 @@ int main (int argc, char **argv) {
     // Parse arguments
     if (argc == 1) print_help(argv[0]);
     
-    // -b, -f, -k, -o and -t take an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "b:f:hk:o:St:")) != -1) {
+    // -b, -f, -k, -o, -t, -x take an argument (indicated by ':')
+    while ((c = getopt(argc, argv, "b:f:hk:o:St:x:")) != -1) {
         switch (c) {
         case 'b':
-            add_breakpoint(optarg);
+            add_breakpoint(optarg, Globals::breakpoints);
             break;
         
         case 'f':   // Set clock frequency
@@ -98,6 +99,10 @@ int main (int argc, char **argv) {
                 fprintf(stderr, "Error: Invalid terminal delay, make sure it's a positive integer\n");
                 exit(EXIT_FAILURE);
             }
+            break;
+            
+        case 'x':
+            add_breakpoint(optarg, Globals::exitpoints);
             break;
             
         case '?':   // Error

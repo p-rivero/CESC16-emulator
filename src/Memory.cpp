@@ -39,6 +39,11 @@ MemCell& Reg::operator=(word rhs) {
 Regfile::Regfile() {
     Data[0] = Reg(true);
 }
+Reg& Regfile::ABI_A0() {
+    const int ABI_A0_idx = 12;
+    assert(ABI_names[ABI_A0_idx] == "a0");
+    return Data[ABI_A0_idx];
+}
 Reg& Regfile::operator[](byte addr) {
     if (addr >= REGFILE_SZ) throw "Invalid regfile access";
     return Data[addr];

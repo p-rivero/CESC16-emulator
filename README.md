@@ -39,3 +39,13 @@ Example (set breakpoints at `PC=0x0000` and `PC=0x1234`):
 ```
 
 Once the emulator is paused, you can single-step by pressing the `F6` key (each time it's pressed, exactly 1 instruction is executed).
+
+## Exit points
+Exit points work in exactly the same way as breakpoints, but they cause the emulator to exit instead of pausing execution. The exit code of the program (returned to the OS) is the value that was stored in register `a0`.
+
+You can set an arbitrary number of exit points, using `-x` multiple times.
+
+Example (jump to `PC=0xFFFF` in order to exit the emulator):
+```
+./CESC_Emu my_ROM_file.hex -x ffff
+```

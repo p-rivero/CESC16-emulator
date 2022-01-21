@@ -78,8 +78,8 @@ private:
     // Returns true if the OS is ready to be interrupted (handlers have been initialized)
     inline bool is_OS_ready();
 
-    // Returns true if a breakpoint has been set at current PC
-    inline bool is_breakpoint();
+    // Returns true if a breakpoint (from the provided list) has been set at current PC
+    inline bool is_breakpoint(const std::vector<word>& breakpoints);
 
 
 

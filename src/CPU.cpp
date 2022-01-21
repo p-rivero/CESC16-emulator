@@ -138,9 +138,9 @@ bool CPU::is_OS_ready() {
     return Globals::strict_flg or (PC >= Globals::OS_critical_instr);
 }
 
-bool CPU::is_breakpoint() {
-    for (word addr : Globals::breakpoints)
-        if (PC == addr) return true;
+bool CPU::is_breakpoint(const std::vector<word>& breakpoints) {
+    for (int i = 0; i < breakpoints.size(); i++)
+        if (PC == breakpoints[i]) return true;
 
     return false;
 }
@@ -613,8 +613,20 @@ int32_t CPU::execute(int32_t cycles) {
         // Increment global count to be displayed
         Globals::elapsed_cycles += used_cycles;
         
+        // Check if we landed on an exit point
+        if (is_breakpoint(Globals::exitpoints)) {
+            _KILL_GUARD
+            Terminal::destroy();
+            
+            // The exit code is the value stored in a0
+            int exit_code = regs.ABI_A0();
+            if (exit_code > 0xFF) {
+                fprintf(stderr, "Warning: the exit code 0x%X is bigger than 255 and will be truncated\n", exit_code);
+            }
+            exit(exit_code);
+        }
         // Check if we landed on a breakpoint
-        if (Globals::single_step or (Globals::break_flg and is_breakpoint())) {
+        if (Globals::single_step or is_breakpoint(Globals::breakpoints)) {
             Globals::is_paused = true;
             return 0;
         }

@@ -29,8 +29,8 @@ using word = uint16_t;
 namespace Globals {
     extern bool strict_flg;         // True if -S has been used
     extern char *out_file;          // If -o has been used, it contains the name of the output file. Otherwise NULL
-    extern bool break_flg;          // True if -b has been used
-    extern std::vector<word> breakpoints;   // If break_flg is set, contains the breakpoint address
+    extern std::vector<word> breakpoints;   // Contains the breakpoint addresses (if -b has been used)
+    extern std::vector<word> exitpoints;    // Contains the exitpoint addresses (if -x has been used)
     extern int terminal_delay;      // How many microseconds to wait before the output terminal clears the busy flag
     extern int keyboard_delay;      // Microseconds to wait before the keyboard controller clears the busy flag
 
