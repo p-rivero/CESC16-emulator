@@ -28,6 +28,7 @@ using word = uint16_t;
 // Global variables that may be changed by user options
 namespace Globals {
     extern bool strict_flg;         // True if -S has been used
+    extern bool silent_flg;         // True if -s has been used
     extern char *out_file;          // If -o has been used, it contains the name of the output file. Otherwise NULL
     extern std::vector<word> breakpoints;   // Contains the breakpoint addresses (if -b has been used)
     extern std::vector<word> exitpoints;    // Contains the exitpoint addresses (if -x has been used)

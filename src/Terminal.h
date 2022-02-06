@@ -35,6 +35,8 @@ private:
     static void sig_handler(int sig);
     static void size_check();
     static bool is_regular_char(int ch);
+    void init_ncurses();
+    void cleanup_ncurses();
     void stop();
     void resume();
 

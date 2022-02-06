@@ -6,6 +6,7 @@ word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 
 
 char *Globals::out_file = NULL;         // Don't write output to any file
 bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
+bool Globals::silent_flg = false;       // By default, strict mode is disabled (add extra protections)
 // Store the addresses of all the breakpoints and exitpoints
 std::vector<word> Globals::breakpoints;
 std::vector<word> Globals::exitpoints;
@@ -23,6 +24,7 @@ void print_help(const char* prog_name) {
     printf("       -h           Show this help message\n");
     printf("       -k time_us   Set the delay of the keyboard (per key, in microseconds)\n");
     printf("       -o filename  Output file (dump all CPU outputs to file)\n");
+    printf("       -s           Silent mode (don't display the ncurses interface)\n");
     printf("       -S           Strict mode (disable extra emulator protections)\n");
     printf("       -t time_us   Set the delay of the terminal (per character, in microseconds)\n");
     printf("       -x address   Add exit point at an address (exit emulator when PC=addr)\n");
@@ -59,7 +61,7 @@ int main (int argc, char **argv) {
     if (argc == 1) print_help(argv[0]);
     
     // -b, -f, -k, -o, -t, -x take an argument (indicated by ':')
-    while ((c = getopt(argc, argv, "b:f:hk:o:St:x:")) != -1) {
+    while ((c = getopt(argc, argv, "b:f:hk:o:Sst:x:")) != -1) {
         switch (c) {
         case 'b':
             add_breakpoint(optarg, Globals::breakpoints);
@@ -91,6 +93,10 @@ int main (int argc, char **argv) {
 
         case 'S':
             Globals::strict_flg = true; // Strict mode
+            break;
+            
+        case 's':
+            Globals::silent_flg = true; // Strict mode
             break;
             
         case 't':   // Set terminal delay

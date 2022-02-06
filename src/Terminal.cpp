@@ -79,6 +79,27 @@ void Terminal::resume() {
 
 
 Terminal::Terminal(){
+    // If -s is not used, initialize the ncurses windows
+    if (not Globals::silent_flg) {
+        init_ncurses();
+    }
+    // If -o is used, all CPU outputs are stored in output_file
+    if (Globals::out_file) {
+        output_file = std::ofstream(Globals::out_file, std::fstream::out);
+        if (not output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
+    }
+}
+
+Terminal::~Terminal(){
+    if (not Globals::silent_flg) {
+        cleanup_ncurses();
+    }
+    if (Globals::out_file) {
+        output_file.close();
+    }
+}
+
+void Terminal::init_ncurses() {
     // Save terminal settings
     tcgetattr(0, &shell_settings);
 
@@ -140,29 +161,44 @@ Terminal::Terminal(){
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");
     draw_rectangle(ROWS+2, 0, ROWS+4, COLS+COLS_STATUS+4, "Performance");
     refresh();
-
-    // If -o is used, all CPU outputs are stored in output_file
-    if (Globals::out_file) {
-        output_file = std::ofstream(Globals::out_file, std::fstream::out);
-        if (not output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
-    }
 }
 
-Terminal::~Terminal(){
-    // Clean up
+void Terminal::cleanup_ncurses() {
     delwin(term_screen);
     delwin(mainwin);
     endwin();
     refresh();
-
-    if (Globals::out_file) output_file.close();
 }
 
 
 // Output a char
 void Terminal::print(char c, print_mode mode) {
-    if (mode != ONLY_FILE) wprintw(term_screen, "%c", c);
-    if (Globals::out_file and mode != ONLY_SCREEN) output_file << c;
+    switch (mode)
+    {
+    case ONLY_SCREEN:
+        // Print to ncurses terminal screen
+        if (not Globals::silent_flg) wprintw(term_screen, "%c", c);
+        break;
+        
+    case ONLY_FILE:
+        // Write to file
+        if (Globals::out_file) output_file << c;
+        // If in silent mode, print directly to terminal
+        if (Globals::silent_flg) putc(c, stdout);
+        break;
+    
+    case BOTH:
+        // Write to file
+        if (Globals::out_file) output_file << c;
+        // Print to ncurses terminal screen
+        if (Globals::silent_flg) putc(c, stdout);
+        else wprintw(term_screen, "%c", c);
+        break;
+    
+    default:
+        fatal_error("Invalid print mode: %d", int(mode));
+        break;
+    }
 }
 
 void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI) {
