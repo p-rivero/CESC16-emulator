@@ -11,11 +11,11 @@ Keyboard::Keyboard() {
 
 // WRITE
 MemCell& Keyboard::operator=(word rhs) {
-    if (busy_flag != 0 and not Globals::strict_flg) {
+    if (busy_flag != 0 && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when overwriting the controller input register
         throw "Keyboard/Serial: attempting to output while the controller was busy";
     }
-    if (rhs > 0x7F and not Globals::strict_flg) {
+    if (rhs > 0x7F && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 7-bit long
         throw "Keyboard/Serial: Value written is bigger than 7 bit and will be truncated";
     }
@@ -56,7 +56,7 @@ Keyboard::operator int() const {
 bool Keyboard::update() {    
     term->update_input();
     // If another char is being presented OR the CPU is in the service routine, don't do anything
-    if (output_reg or not can_interrupt) return false;
+    if (output_reg || !can_interrupt) return false;
     
     byte pressed_key = term->get_input();
     if (pressed_key != 0) {

@@ -3,7 +3,7 @@
 // Tick the timer for a number of clock cycles
 bool Timer::tick(int amount) {
     // If the timer is disabled, don't do anything
-    if (not timer_active) return false;
+    if (!timer_active) return false;
 
     // Memory writes are performed on the rising edge of the last timestep,
     // the instruction that called Timer::write() does not increment the counter.

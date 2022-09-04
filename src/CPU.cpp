@@ -74,9 +74,9 @@ word CPU::ALU_result(byte funct, word A, word B) {
     }
 
     // Set flags
-    Flags.Z = not result;
+    Flags.Z = (result == 0x0000);
     Flags.C = bool(true_result & 0x10000);
-    Flags.V = ((A&MSB) == (B&MSB)) and ((A&MSB) != (result&MSB));
+    Flags.V = ((A&MSB) == (B&MSB)) && ((A&MSB) != (result&MSB));
     Flags.S = bool(result&MSB);
     // No need to invert carry on sub, in case of borrow the upper bits of true_result are 0xFFFF
 
@@ -92,35 +92,35 @@ bool CPU::is_condition_met(byte cond) {
     case 0b0001: // jz / je
         return Flags.Z;
     case 0b0010: // jnz / jne
-        return not Flags.Z;
+        return !Flags.Z;
 
     case 0b0011: // jc / jb / jnae
         return Flags.C;
     case 0b0100: // jnc / jnb / jae
-        return not Flags.C;
+        return !Flags.C;
 
     case 0b0101: // jo
         return Flags.V;
     case 0b0110: // jno
-        return not Flags.V;
+        return !Flags.V;
 
     case 0b0111: // js
         return Flags.S;
     case 0b1000: // jns
-        return not Flags.S;
+        return !Flags.S;
 
     case 0b1001: // jbe / jna
-        return Flags.C or Flags.Z;
+        return Flags.C || Flags.Z;
     case 0b1010: // ja / jnbe
-        return not (Flags.C or Flags.Z);
+        return !(Flags.C || Flags.Z);
 
     case 0b1011: // jl / jnge
         return Flags.V != Flags.S;
     case 0b1100: // jle / jng
-        return (Flags.V != Flags.S) or Flags.Z;
+        return (Flags.V != Flags.S) || Flags.Z;
 
     case 0b1101: // jg / jnle
-        return (Flags.V == Flags.S) and not Flags.Z;
+        return (Flags.V == Flags.S) && !Flags.Z;
     case 0b1110: // jge / jnl
         return Flags.V == Flags.S;
     
@@ -135,7 +135,7 @@ bool CPU::is_condition_met(byte cond) {
 bool CPU::is_OS_ready() {
     // 1. We suppose that all the critical work is done on the first instructions
     // 2. This extra protection layer isn't present in the real CPU. If strict_flg is set, return true
-    return Globals::strict_flg or (PC >= Globals::OS_critical_instr);
+    return Globals::strict_flg || (PC >= Globals::OS_critical_instr);
 }
 
 bool CPU::is_breakpoint(const std::vector<word>& breakpoints) {
@@ -366,14 +366,14 @@ int CPU::exec_SHFT(word opcode) {
 
     case 0b10: // srl
         result = uint16_t(regs[rA]) >> shamt;
-        Flags.Z = not result;
+        Flags.Z = (result == 0);
         Flags.S = bool(result&MSB);
         // V and C are undefined
         break;
 
     case 0b11: // sra
         result = int16_t(regs[rA]) >> shamt;
-        Flags.Z = not result;
+        Flags.Z = (result == 0);
         Flags.S = bool(result&MSB);
         // V and C are undefined
         break;
@@ -456,7 +456,7 @@ int CPU::exec_MEM(word opcode) {
 int CPU::exec_JMP(word opcode) {
     byte cond = extract_bitfield(opcode, 11, 8);
 
-    if (not is_condition_met(cond)) return 2; // Jump is not taken
+    if (!is_condition_met(cond)) return 2; // Jump is not taken
 
     // Jump is taken
     if (extract_bit(opcode, 12) == 0) {
@@ -568,7 +568,7 @@ int32_t CPU::execute(int32_t cycles) {
         word old_PC = PC;
         
         // CPU INTERRUPT! Jump to interrupt vector (0x0011 if in RAM, 0x0013 if in ROM)
-        if (IRQ and is_OS_ready()) try {
+        if (IRQ && is_OS_ready()) try {
             push(PC);
             PC = user_mode ? 0x0011 : 0x0013;
             user_mode = false;  // Jump to ROM
@@ -626,7 +626,7 @@ int32_t CPU::execute(int32_t cycles) {
             exit(exit_code);
         }
         // Check if we landed on a breakpoint
-        if (Globals::single_step or is_breakpoint(Globals::breakpoints)) {
+        if (Globals::single_step || is_breakpoint(Globals::breakpoints)) {
             Globals::is_paused = true;
             return 0;
         }

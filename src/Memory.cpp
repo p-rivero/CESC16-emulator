@@ -27,7 +27,7 @@ Reg::Reg(bool is_zero) {
 // WRITE to register
 MemCell& Reg::operator=(word rhs) {
     // Register zero is non-writable
-    if (not zero_reg) val_ = rhs;
+    if (!zero_reg) val_ = rhs;
     return *this;
 }
 

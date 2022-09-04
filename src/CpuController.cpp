@@ -48,7 +48,7 @@ void CpuController::sig_handler(int sig) {
 // Enter program in ROM
 void CpuController::read_ROM_file(const char* filename) {
     std::ifstream hex_file(filename, std::fstream::in);
-    if (not hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);
+    if (!hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);
 
     uint32_t address = 0;
     word high, low;
@@ -61,7 +61,7 @@ void CpuController::read_ROM_file(const char* filename) {
     }
 
     // Make sure there is no leftover input
-    if (not hex_file.eof()) fatal_error("Error: make sure the ROM file is a valid binary file");
+    if (!hex_file.eof()) fatal_error("Error: make sure the ROM file is a valid binary file");
 
     hex_file.close();
 }

@@ -6,14 +6,13 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cassert>
-#include <ciso646> // Include this so vscode doesn't complain about alternative logical operators
 
 extern void destroy_terminal();
 
 #if defined __cplusplus
 #undef assert
 #define assert(expr) \
-    if (not static_cast <bool> (expr)) { \
+    if (!static_cast <bool> (expr)) { \
         destroy_terminal(); __assert_fail(#expr, __FILE__, __LINE__, __ASSERT_FUNCTION); \
     }
 #endif

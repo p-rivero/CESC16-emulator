@@ -80,18 +80,18 @@ void Terminal::resume() {
 
 Terminal::Terminal(){
     // If -s is not used, initialize the ncurses windows
-    if (not Globals::silent_flg) {
+    if (!Globals::silent_flg) {
         init_ncurses();
     }
     // If -o is used, all CPU outputs are stored in output_file
     if (Globals::out_file) {
         output_file = std::ofstream(Globals::out_file, std::fstream::out);
-        if (not output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
+        if (!output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
     }
 }
 
 Terminal::~Terminal(){
-    if (not Globals::silent_flg) {
+    if (!Globals::silent_flg) {
         cleanup_ncurses();
     }
     if (Globals::out_file) {
@@ -142,7 +142,7 @@ void Terminal::init_ncurses() {
         fatal_error("Error: Couldn't catch SIGCONT!");
         
     // Make sure terminal supports color
-    if (not has_colors())
+    if (!has_colors())
         fatal_error("ERROR - Your terminal does not support color");
     
     start_color();
@@ -177,7 +177,7 @@ void Terminal::print(char c, print_mode mode) {
     {
     case ONLY_SCREEN:
         // Print to ncurses terminal screen
-        if (not Globals::silent_flg) wprintw(term_screen, "%c", c);
+        if (!Globals::silent_flg) wprintw(term_screen, "%c", c);
         break;
         
     case ONLY_FILE:
@@ -253,18 +253,18 @@ void Terminal::update_input() {
             
             case KEY_F(5):
                 // Pause/unpause emulator
-                Globals::is_paused = not Globals::is_paused;
+                Globals::is_paused = !Globals::is_paused;
                 Globals::single_step = false;
                 break;
             case KEY_F(6):
                 // Execute 1 instruction
-                if (not Globals::is_paused) break;  // F6 only works when paused
+                if (!Globals::is_paused) break;  // F6 only works when paused
                 Globals::single_step = true;
                 Globals::is_paused = false;
                 break;
             case KEY_F(7):
                 // Reset cycle counter
-                if (not Globals::is_paused) break;  // F7 only works when paused
+                if (!Globals::is_paused) break;  // F7 only works when paused
                 Globals::elapsed_cycles = 0;
                 break;
                 

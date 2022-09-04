@@ -43,7 +43,7 @@ void DiskController::main_loop() {
 word DiskController::read() {
     word data = 0;
     // Poll busy bit until an input is detected
-    while (not (data & Disk::BUSY_BIT)) {
+    while ((data & Disk::BUSY_BIT) == 0) {
         _KILL_GUARD
         data = *input;
     }
@@ -87,7 +87,7 @@ void DiskController::openFile() {
 }
 
 void DiskController::closeFile() {
-    if (not file_is_open)
+    if (!file_is_open)
         throw "closeFile() was called but no file was open";
     
     // Todo: close file
@@ -103,28 +103,28 @@ void DiskController::deleteFile() {
 
 void DiskController::readFile() {
     // Called readRaw() on CH376 library
-    if (not file_is_open)
+    if (!file_is_open)
         throw "readFile() was called but no file was open";
     
     
 }
 
 void DiskController::writeFile() {
-    if (not file_is_open)
+    if (!file_is_open)
         throw "writeFile() was called but no file was open";
     
     
 }
 
 void DiskController::moveFileCursor() {
-    if (not file_is_open)
+    if (!file_is_open)
         throw "moveFileCursor() was called but no file was open";
     
     
 }
 
 void DiskController::getFileCursor() {
-    if (not file_is_open)
+    if (!file_is_open)
         throw "getFileCursor() was called but no file was open";
     
     
@@ -169,11 +169,11 @@ Disk::Disk() {
 
 // WRITE
 MemCell& Disk::operator=(word rhs) {
-    if (input_reg != 0 and not Globals::strict_flg) {
+    if (input_reg != 0 && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when overwriting the controller input register
         throw "Overwriting non-zero value in disk input register";
     }
-    if (rhs > 0x1FF and not Globals::strict_flg) {
+    if (rhs > 0x1FF && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 9-bit long
         throw "Value written in Disk is bigger than 9 bit and will be truncated";
     }
