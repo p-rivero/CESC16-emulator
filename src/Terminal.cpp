@@ -213,10 +213,10 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
         wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i], word(regs[i]));
 
     if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n F5: Resume\n F6: Step\n F7: Cycle = 0\n");
-    else wprintw(stat_screen, "\n\n\n\n\n", CPI);
+    else wprintw(stat_screen, "\n\n\n\n\n");
     
     wmove(perf_screen, 0, 0); // Set cursor to beginning of window
-    wprintw(perf_screen, " CPI: %.4lf\tElapsed cycles: %llu\n", CPI, Globals::elapsed_cycles);
+    wprintw(perf_screen, " CPI: %.4lf\tElapsed cycles: %llu\n", CPI, (unsigned long long)Globals::elapsed_cycles);
 }
 
 // Flush the output stream

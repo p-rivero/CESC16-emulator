@@ -5,11 +5,16 @@ The main code of the emulator (`CPU.cpp`) is based on [Dave Poo's 6502 emulator]
 
 ## How to use
 1. Build the emulator. Currently Linux is the only supported OS.
-    ```
+    ```sh
     make
     ```
-2. Run the emulator. Specify as an argument which hex file to load into ROM.
+    If you encounter the error `curses.h: No such file or directory`, you may need to intall the missing package:
+    ```sh
+    sudo apt install libncurses5-dev
     ```
+    
+2. Run the emulator. Specify as an argument which hex file to load into ROM.
+    ```sh
     ./CESC_Emu my_ROM_file.hex
     ```
 3. The emulator will start running at the default clock speed, make sure the size of the terminal window is big enough to fit all the elements.
@@ -21,7 +26,7 @@ The main code of the emulator (`CPU.cpp`) is based on [Dave Poo's 6502 emulator]
 The clock frequency of the emulated CPU can be changed by using the `-f` option.
 
 Example (set clock speed to 50 kHz):
-```
+```sh
 ./CESC_Emu -f 50000 my_ROM_file.hex
 ```
 
@@ -34,7 +39,7 @@ You can also set breakpoints by using the `-b` option followed by an address **i
 The emulator supports an arbitrary number of breakpoints, just use `-b` multiple times.
 
 Example (set breakpoints at `PC=0x0000` and `PC=0x1234`):
-```
+```sh
 ./CESC_Emu my_ROM_file.hex -b 0 -b 1234
 ```
 
@@ -46,6 +51,6 @@ Exit points work in exactly the same way as breakpoints, but they cause the emul
 You can set an arbitrary number of exit points, using `-x` multiple times.
 
 Example (jump to `PC=0xFFFF` in order to exit the emulator):
-```
+```sh
 ./CESC_Emu my_ROM_file.hex -x ffff
 ```
