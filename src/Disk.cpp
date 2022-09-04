@@ -1,4 +1,5 @@
 #include "Disk.h"
+#include "Exceptions/EmulatorException.h"
 
 // DISK CONTROLLER
 
@@ -30,8 +31,8 @@ void DiskController::main_loop() {
             case Disk::CMD_mkdir: mkdir(); break;
             case Disk::CMD_getInfo: getInfo(); break;
         
-            case Disk::ACK: throw "Unexpected ACK instead of command";
-            default: throw "Unrecognized command";
+            case Disk::ACK: throw EmulatorException("Unexpected ACK instead of command");
+            default: throw EmulatorException("Unrecognized command");
         }
         
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -69,8 +70,19 @@ void DiskController::clear() {
 void DiskController::expectAck() {
     word in = read();
     if (in != Disk::ACK)
-        throw "Disk controller expected an ACK";
+        throw EmulatorException("Disk controller expected an ACK");
 }
+
+
+void DiskController::checkFileIsOpen(std::string funct) {
+    if (!file_is_open)
+        throw EmulatorException(funct + " was called but no file was open");
+}
+void DiskController::checkSetFileName(std::string funct) {
+    if (currentFile.empty())
+        throw EmulatorException(funct + " was called without using setFileName first");
+}
+
 
 
 // Disk operations
@@ -80,52 +92,45 @@ void DiskController::setFileName() {
 }
 
 void DiskController::openFile() {
-    if (currentFile.empty())
-        throw "openFile() was called without using setFileName() first";
+    checkSetFileName("openFile");
     
     
 }
 
 void DiskController::closeFile() {
-    if (!file_is_open)
-        throw "closeFile() was called but no file was open";
+    checkFileIsOpen("closeFile");
     
     // Todo: close file
     file_is_open = false;
 }
 
 void DiskController::deleteFile() {
-    if (currentFile.empty())
-        throw "deleteFile() was called without using setFileName() first";
+    checkSetFileName("deleteFile");
     
     
 }
 
 void DiskController::readFile() {
     // Called readRaw() on CH376 library
-    if (!file_is_open)
-        throw "readFile() was called but no file was open";
+    checkFileIsOpen("readFile");
     
     
 }
 
 void DiskController::writeFile() {
-    if (!file_is_open)
-        throw "writeFile() was called but no file was open";
+    checkFileIsOpen("writeFile");
     
     
 }
 
 void DiskController::moveFileCursor() {
-    if (!file_is_open)
-        throw "moveFileCursor() was called but no file was open";
+    checkFileIsOpen("moveFileCursor");
     
     
 }
 
 void DiskController::getFileCursor() {
-    if (!file_is_open)
-        throw "getFileCursor() was called but no file was open";
+    checkFileIsOpen("getFileCursor");
     
     
 }
@@ -158,10 +163,10 @@ Disk::Disk() {
             DiskController controller(&input_reg, &output_reg);
             controller.main_loop();
         }
-        catch (const char* msg) {
+        catch (EmulatorException& e) {
             _KILL_GUARD
             destroy_terminal();
-            fprintf(stderr, "Error in Disk controller:\n%s\n", msg);
+            fprintf(stderr, "Error in Disk controller:\n%s\n", e.what());
             exit(EXIT_FAILURE);
         }
     }).detach();
@@ -171,11 +176,11 @@ Disk::Disk() {
 MemCell& Disk::operator=(word rhs) {
     if (input_reg != 0 && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when overwriting the controller input register
-        throw "Overwriting non-zero value in disk input register";
+        throw EmulatorException("Overwriting non-zero value in disk input register");
     }
     if (rhs > 0x1FF && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 9-bit long
-        throw "Value written in Disk is bigger than 9 bit and will be truncated";
+        throw EmulatorException("Value written in Disk is bigger than 9 bit and will be truncated");
     }
     input_reg = (rhs & 0x1FF) | BUSY_BIT;
     

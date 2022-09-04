@@ -20,6 +20,9 @@ private:
     void writeByteStream(byte *buffer, int length);
     void readByteStream(byte *buffer, int length);
     
+    inline void checkFileIsOpen(std::string funct);
+    inline void checkSetFileName(std::string funct);
+    
     void setFileName();
     void openFile();
     void closeFile();

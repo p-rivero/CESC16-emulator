@@ -1,4 +1,5 @@
 #include "Memory.h"
+#include "Exceptions/EmulatorException.h"
 
 // BASIC MEMORY CELL
 
@@ -45,7 +46,7 @@ Reg& Regfile::ABI_A0() {
     return Data[ABI_A0_idx];
 }
 Reg& Regfile::operator[](byte addr) {
-    if (addr >= REGFILE_SZ) throw "Invalid regfile access";
+    if (addr >= REGFILE_SZ) throw EmulatorException("Invalid regfile access");
     return Data[addr];
 }
 
@@ -80,6 +81,6 @@ MemCell& Ram::operator[](word addr) {
         case 0xFF40: return *Port1;
         case 0xFF80: return *Port2;
         case 0xFFC0: return *Port3;
-        default: throw "Invalid memory access";
+        default: throw EmulatorException("Invalid memory access");
     }
 }

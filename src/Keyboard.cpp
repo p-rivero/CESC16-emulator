@@ -1,4 +1,5 @@
 #include "Keyboard.h"
+#include "Exceptions/EmulatorException.h"
 
 int Globals::keyboard_delay = 0;
 
@@ -13,11 +14,11 @@ Keyboard::Keyboard() {
 MemCell& Keyboard::operator=(word rhs) {
     if (busy_flag != 0 && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when overwriting the controller input register
-        throw "Keyboard/Serial: attempting to output while the controller was busy";
+        throw EmulatorException("Keyboard/Serial: attempting to output while the controller was busy");
     }
     if (rhs > 0x7F && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 7-bit long
-        throw "Keyboard/Serial: Value written is bigger than 7 bit and will be truncated";
+        throw EmulatorException("Keyboard/Serial: Value written is bigger than 7 bit and will be truncated");
     }
     
     byte val = rhs & 0x7F;  // Only lower 7 bits are used
@@ -30,7 +31,7 @@ MemCell& Keyboard::operator=(word rhs) {
         can_interrupt = true;
         output_reg = 0; // Also clear the output register (same as ACK)
     }
-    else throw "Invalid keyboard command";
+    else throw EmulatorException("Invalid keyboard command");
     
     if (Globals::keyboard_delay > 0) {
         busy_flag = true; // Writing to the input register sets the busy flag

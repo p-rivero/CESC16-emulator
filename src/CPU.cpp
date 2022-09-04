@@ -1,4 +1,6 @@
 #include "CPU.h"
+#include "Exceptions/EmulatorException.h"
+#include "Exceptions/IllegalOpcodeException.h"
 
 // Returns the value encoded between bit_left and bit_right (both included)
 word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
@@ -20,7 +22,7 @@ word CPU::fetch_argument() {
 // Push some data into the stack
 void CPU::push(word data) {
     *SP = *SP - 1; // No -= operator
-    if (*SP == 0xFFFF) throw "SP overflowed";
+    if (*SP == 0xFFFF) throw EmulatorException("SP overflowed");
     ram[*SP] = data;
 }
 
@@ -28,14 +30,14 @@ void CPU::push(word data) {
 word CPU::pop() {
     word data = ram[*SP];
     *SP = *SP + 1; // No += operator
-    if (*SP == 0x0000) throw "SP overflowed";
+    if (*SP == 0x0000) throw EmulatorException("SP overflowed");
     return data;
 }
 
 // Equivalent to ++PC, but if PC overflows an exception is thrown
 word CPU::PC_plus_1() {
     PC++;
-    if (PC == 0x0000) throw "PC overflowed";
+    if (PC == 0x0000) throw EmulatorException("PC overflowed");
     return PC;
 }
 
@@ -70,7 +72,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
         B = ~B; // Invert second operand for overflow computation
         break;
     default:
-        throw "Unreachable ALU funct!";
+        throw EmulatorException("Unreachable ALU funct!");
     }
 
     // Set flags
@@ -125,7 +127,7 @@ bool CPU::is_condition_met(byte cond) {
         return Flags.V == Flags.S;
     
     default:
-        throw "Invalid jump condition";
+        throw EmulatorException("Invalid jump condition: " + std::to_string(cond));
         break;
     }
     return false;
@@ -202,7 +204,7 @@ int CPU::exec_INSTR(word opcode) {
         break;
     
     default:
-        throw "Unreachable opcode";
+        throw EmulatorException("Unreachable opcode: " + std::to_string(opcode));
         break;
     }
 
@@ -379,7 +381,7 @@ int CPU::exec_SHFT(word opcode) {
         break;
     
     default:
-        throw "Unreachable shift op!";
+        throw EmulatorException("Unreachable shift op: " + std::to_string(op));
         break;
     }
     
@@ -396,7 +398,7 @@ int CPU::exec_MEM(word opcode) {
 
     switch (extract_bitfield(opcode, 12, 8)) {
     case 0b00000: { // movb
-        throw "MOVB is deprecated and cannot be used";
+        throw EmulatorException("MOVB is deprecated and cannot be used");
         word data = ram[regs[rA] + argument];
         // Sign extend
         data &= 0x00FF;
@@ -444,11 +446,11 @@ int CPU::exec_MEM(word opcode) {
         return 3;
     
     default:
-        throw "Illegal opcode";
+        throw IllegalOpcodeException();
         break;
     }
 
-    throw "Unreachable code (mem)!";
+    throw EmulatorException("Unreachable code (mem)!");
     return 0;
 }
 
@@ -535,12 +537,12 @@ int CPU::exec_CALL(word opcode) {
         }
         else {
             // 0b01001 -> illegal
-            throw "Illegal opcode";
+            throw IllegalOpcodeException();
         }
         break;
     
     default:
-        throw "Illegal opcode";
+        throw IllegalOpcodeException();
         break;
     }
 
@@ -576,10 +578,10 @@ int32_t CPU::execute(int32_t cycles) {
             IRQ = false;
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
-        catch (const char* msg) {
+        catch (EmulatorException& e) {
             _KILL_GUARD
             Terminal::destroy();
-            fprintf(stderr, "Error while processing interrupt:\n%s\n", msg);
+            fprintf(stderr, "Error while processing interrupt:\n%s\n", e.what());
             exit(EXIT_FAILURE);
         }
 
@@ -590,16 +592,16 @@ int32_t CPU::execute(int32_t cycles) {
             used_cycles = exec_INSTR(opcode);
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
-        catch (const char* msg) {
+        catch (EmulatorException& e) {
             _KILL_GUARD
             Terminal::destroy();
             if (user_mode) {
                 fprintf(stderr, "Error at PC = 0x%04X [RAM] ", old_PC);
-                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(ram[old_PC]), uint(ram[old_PC+1]), msg);
+                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(ram[old_PC]), uint(ram[old_PC+1]), e.what());
             }
             else {
                 fprintf(stderr, "Error at PC = 0x%04X [ROM] ", old_PC);
-                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(rom_h[old_PC]), uint(rom_l[old_PC]), msg);
+                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(rom_h[old_PC]), uint(rom_l[old_PC]), e.what());
             }
             exit(EXIT_FAILURE);
         }
