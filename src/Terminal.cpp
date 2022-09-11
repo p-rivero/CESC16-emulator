@@ -1,16 +1,20 @@
 #include "Terminal.h"
-
-void destroy_terminal() { Terminal::destroy(); }
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
 
 Terminal *Terminal::term = NULL;
 termios Terminal::shell_settings;
 
 Terminal *Terminal::initialize() {
-    if (term == NULL) term = new Terminal;
-    // Make sure window is big enough
-    size_check();
+    if (term == NULL) {
+        // Make sure window is big enough
+        size_check();
+        term = new Terminal;
+    }
+    
     return term;
 }
+
 void Terminal::destroy() {
     if (term != NULL) {
         term->flush(); // Discard any buffered outputs
@@ -19,18 +23,6 @@ void Terminal::destroy() {
     // Restore correct settings for shell
     tcsetattr(0, TCSANOW, &shell_settings);
     term = NULL;
-}
-
-void Terminal::fatal_error(const char* msg, ...) {
-    _KILL_GUARD
-    destroy(); // Destroy terminal
-    // Print error message
-    va_list args;
-    va_start(args, msg);
-    vfprintf(stderr, msg, args);
-    va_end (args);
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE);
 }
 
 void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title) {
@@ -49,15 +41,15 @@ void Terminal::sig_handler(int sig) {
     if (sig == SIGWINCH) size_check();
     else if (sig == SIGCONT) term->resume();
     else if (sig == SIGTSTP) term->stop();
-    else fatal_error("Error: Unknown signal received");
+    else ExitHelper::error("Error: Unknown signal received\n");
 }
 
 void Terminal::size_check() {
     winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     
-    if (w.ws_row <= ROWS+4) fatal_error("ERROR - Terminal height too small");
-    if (w.ws_col <= COLS+COLS_STATUS+4) fatal_error("ERROR - Terminal width too small");
+    if (w.ws_row <= ROWS+4) ExitHelper::error("ERROR - Terminal height too small\n");
+    if (w.ws_col <= COLS+COLS_STATUS+4) ExitHelper::error("ERROR - Terminal width too small\n");
 }
 
 void Terminal::stop() {
@@ -86,7 +78,7 @@ Terminal::Terminal(){
     // If -o is used, all CPU outputs are stored in output_file
     if (Globals::out_file) {
         output_file = std::ofstream(Globals::out_file, std::fstream::out);
-        if (!output_file) fatal_error("Error: Output file [%s] could not be opened", Globals::out_file);
+        if (!output_file) ExitHelper::error("Error: Output file [%s] could not be opened\n", Globals::out_file);
     }
 }
 
@@ -106,22 +98,22 @@ void Terminal::init_ncurses() {
     // Initialize main window
     mainwin = initscr();
     if (mainwin == NULL)
-        fatal_error("Error initializing main window!\r");
+        ExitHelper::error("Error initializing main window!\r\n");
 
     // Initialize subwindow (terminal output)
     term_screen = newwin(ROWS, COLS, 1, 1);
     if (term_screen == NULL)
-        fatal_error("Error initializing subwindow!");
+        ExitHelper::error("Error initializing subwindow!\n");
 
     // Initialize subwindow (status)
     stat_screen = newwin(ROWS, COLS_STATUS, 1, COLS+4);
     if (stat_screen == NULL)
-        fatal_error("Error initializing subwindow!");
+        ExitHelper::error("Error initializing subwindow!\n");
         
     // Initialize subwindow (metrics)
     perf_screen = newwin(1, COLS+COLS_STATUS+3, ROWS+3, 1);
     if (perf_screen == NULL)
-        fatal_error("Error initializing subwindow!");
+        ExitHelper::error("Error initializing subwindow!\n");
 
     noecho(); // Turn off key echoing
     keypad(mainwin, true);  // Enable the keypad for non-char keys
@@ -132,18 +124,18 @@ void Terminal::init_ncurses() {
 
     // SIGWINCH is triggered whenever the user resizes the window
     if (signal(SIGWINCH, sig_handler) == SIG_ERR)
-        fatal_error("Error: Couldn't catch SIGWINCH!");
+        ExitHelper::error("Error: Couldn't catch SIGWINCH!\n");
 
     ncurses_stop_handler = signal(SIGTSTP, sig_handler);
     if (ncurses_stop_handler == SIG_ERR)
-        fatal_error("Error: Couldn't catch SIGTSTP!");
+        ExitHelper::error("Error: Couldn't catch SIGTSTP!\n");
     
     if (signal(SIGCONT, sig_handler) == SIG_ERR)
-        fatal_error("Error: Couldn't catch SIGCONT!");
+        ExitHelper::error("Error: Couldn't catch SIGCONT!\n");
         
     // Make sure terminal supports color
     if (!has_colors())
-        fatal_error("ERROR - Your terminal does not support color");
+        ExitHelper::error("ERROR - Your terminal does not support color\n");
     
     start_color();
     use_default_colors();   // Allow terminal to keep default background using -1
@@ -196,7 +188,7 @@ void Terminal::print(char c, print_mode mode) {
         break;
     
     default:
-        fatal_error("Invalid print mode: %d", int(mode));
+        ExitHelper::error("Invalid print mode: %d\n", int(mode));
         break;
     }
 }
@@ -296,7 +288,7 @@ byte Terminal::get_input() {
 bool Terminal::is_regular_char(int ch) {
     // Make sure all ncurses special keys have been catched
     if (ch > 0xFF)
-        fatal_error("ERROR - Uncatched key: %s (0x%X)", keyname(ch), ch);
+        ExitHelper::error("ERROR - Uncatched key: %s (0x%X)\n", keyname(ch), ch);
 
     // 110xxxxx => 2-byte UTF-8 encoded characters, ignore by default
     if ((ch & 0b11100000) == 0b11000000) {
@@ -318,7 +310,7 @@ bool Terminal::is_regular_char(int ch) {
     }
     // The 10xxxxxx range *should* be unused
     if (ch > 0x7F)
-        fatal_error("UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
+        ExitHelper::error("UNREACHABLE INPUT: %s (0x%X)\n", keyname(ch), ch);
     return true;
 }
 

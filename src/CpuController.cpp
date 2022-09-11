@@ -1,11 +1,14 @@
 #include "CpuController.h"
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
 
 volatile bool Globals::is_paused;
 volatile bool Globals::single_step;
 volatile uint64_t Globals::elapsed_cycles;
+std::mutex ExitHelper::exit_mutex;
+
 CPU *CpuController::cpu = nullptr;
 std::mutex CpuController::update_mutex;
-std::mutex Globals::kill_mutex;
 
 CpuController::CpuController() {
     // Create and reset CPU
@@ -13,42 +16,28 @@ CpuController::CpuController() {
     cpu->reset();
     
     Globals::is_paused = false;
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-        fatal_error("Error: Couldn't catch SIGINT!");
+    if (signal(SIGINT, sig_handler) == SIG_ERR) {
+        ExitHelper::error("Error: Couldn't catch SIGINT\n");
+    }
 }
 
 CpuController::~CpuController() {
     if (cpu != nullptr) delete cpu;
 }
 
-void CpuController::fatal_error(const char* format, ...) {
-    _KILL_GUARD
-    update_mutex.lock();
-    if (cpu != nullptr) delete cpu;
-    // Print error message
-    va_list args;
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end (args);
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE);
-}
-
-
 void CpuController::sig_handler(int sig) {
     // ^C ends execution
-    if (sig == SIGINT) {
-        _KILL_GUARD
-        delete cpu;
-        exit(EXIT_SUCCESS);
-    }
+    if (sig == SIGINT) ExitHelper::exitCode(EXIT_SUCCESS, "");
 }
 
 
 // Enter program in ROM
 void CpuController::read_ROM_file(const char* filename) {
     std::ifstream hex_file(filename, std::fstream::in);
-    if (!hex_file) fatal_error("Error: ROM file [%s] could not be found/opened", filename);
+    if (!hex_file) {
+        //fatal_error("Error: ROM file [%s] could not be found/opened", filename);
+        ExitHelper::error("Error: ROM file [%s] could not be found/opened\n", filename);
+    }
 
     uint32_t address = 0;
     word high, low;
@@ -57,11 +46,15 @@ void CpuController::read_ROM_file(const char* filename) {
         cpu->write_ROM(address++, high, low);
 
         // File too large for 16 bits of address space
-        if (address > 0xFFFF) fatal_error("Error: ROM file is too large");
+        if (address > 0xFFFF) {
+            ExitHelper::error("Error: ROM file is too large\n");
+        }
     }
 
     // Make sure there is no leftover input
-    if (!hex_file.eof()) fatal_error("Error: make sure the ROM file is a valid binary file");
+    if (!hex_file.eof()) {
+        ExitHelper::error("Error: make sure the ROM file is a valid binary file\n");
+    }
 
     hex_file.close();
 }
@@ -104,7 +97,8 @@ void CpuController::execute() {
     if (CYCLES < CPU::MAX_TIMESTEPS) run_slow();
     else run_fast(CYCLES, DEFAULT_SLEEP_US);
 
-    fatal_error("UNREACHABLE");
+    // Unreachable
+    assert(false);
 }
 
 // Execute the program at high clock speeds
@@ -120,8 +114,9 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
         extra_cycles = cpu->execute(CYCLES - extra_cycles);
         update_mutex.unlock();
 
-        if (std::chrono::steady_clock::now() > x)
-            fatal_error("Target clock frequency too high for real-time emulation, try a slower clock");
+        if (std::chrono::steady_clock::now() > x) {
+            ExitHelper::error("Target clock frequency too high for real-time emulation, try a slower clock\n");
+        }
         
         std::this_thread::sleep_until(x);
     }

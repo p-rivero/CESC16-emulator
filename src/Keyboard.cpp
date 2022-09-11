@@ -1,5 +1,7 @@
 #include "Keyboard.h"
 #include "Exceptions/EmulatorException.h"
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
 
 int Globals::keyboard_delay = 0;
 
@@ -16,16 +18,19 @@ MemCell& Keyboard::operator=(word rhs) {
         // If strict mode is not enabled, warn when overwriting the controller input register
         throw EmulatorException("Keyboard/Serial: attempting to output while the controller was busy");
     }
+    
     if (rhs > 0x7F && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 7-bit long
         throw EmulatorException("Keyboard/Serial: Value written is bigger than 7 bit and will be truncated");
     }
     
     byte val = rhs & 0x7F;  // Only lower 7 bits are used
+    
     if (val == ACK) {
         // Input acknowledged: clear output register
         output_reg = 0;
     }
+    
     else if (val == RDY) {
         // OS is ready to be interrupted again
         can_interrupt = true;
@@ -37,8 +42,11 @@ MemCell& Keyboard::operator=(word rhs) {
         busy_flag = true; // Writing to the input register sets the busy flag
         // Wait for some time and clear the flag
         std::thread([this]() {
-            _KILL_GUARD
             std::this_thread::sleep_for(std::chrono::microseconds(Globals::keyboard_delay));
+            
+            // Acquire exit lock to prevent segfault when the main thread is exiting
+            std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+            
             busy_flag = false;
         }).detach();
     }

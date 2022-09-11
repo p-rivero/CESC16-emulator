@@ -16,7 +16,6 @@ private:
 
     static void sig_handler(int sig);
 
-    void fatal_error(const char* msg, ...);
     void timer_start(std::function<void(CPU*)> func, unsigned int interval);
     static void call_update(CPU *cpu);
     void run_fast(int32_t CYCLES, int32_t sleep_us);

@@ -1,5 +1,7 @@
 #include "Display.h"
 #include "Exceptions/EmulatorException.h"
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
 
 int Globals::terminal_delay = 0; // In real hardware this would be 32 microseconds
 
@@ -232,16 +234,21 @@ MemCell& Display::operator=(word rhs) {
         // If strict mode is not enabled, warn when overwriting the controller input register
         throw EmulatorException("Terminal: attempting to output while the controller was busy");
     }
+    
     if (rhs > 0xFF && !Globals::strict_flg) {
         // If strict mode is not enabled, warn when written value is more than 8-bit long
         throw EmulatorException("Terminal: Value written is bigger than 8 bit and will be truncated");
     }
+    
     if (Globals::terminal_delay > 0) {
         busy_flag = rhs;
         // VGA terminal can process 1 input every 32 microseconds, wait and clear the flag
         std::thread([this]() {
-            _KILL_GUARD
             std::this_thread::sleep_for(std::chrono::microseconds(Globals::terminal_delay));
+            
+            // Acquire exit lock to prevent segfault when the main thread is exiting
+            std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+            
             busy_flag = 0;
         }).detach();
     }

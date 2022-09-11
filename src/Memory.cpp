@@ -1,5 +1,6 @@
 #include "Memory.h"
 #include "Exceptions/EmulatorException.h"
+#include "Utilities/Assert.h"
 
 // BASIC MEMORY CELL
 

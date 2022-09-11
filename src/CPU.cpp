@@ -1,6 +1,9 @@
 #include "CPU.h"
 #include "Exceptions/EmulatorException.h"
 #include "Exceptions/IllegalOpcodeException.h"
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
+
 
 // Returns the value encoded between bit_left and bit_right (both included)
 word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
@@ -579,10 +582,7 @@ int32_t CPU::execute(int32_t cycles) {
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
         catch (EmulatorException& e) {
-            _KILL_GUARD
-            Terminal::destroy();
-            fprintf(stderr, "Error while processing interrupt:\n%s\n", e.what());
-            exit(EXIT_FAILURE);
+            ExitHelper::error("Error while processing interrupt:\n%s\n", e.what());
         }
 
         // EXECUTE INSTRUCTION NORMALLY
@@ -593,17 +593,18 @@ int32_t CPU::execute(int32_t cycles) {
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
         catch (EmulatorException& e) {
-            _KILL_GUARD
-            Terminal::destroy();
             if (user_mode) {
-                fprintf(stderr, "Error at PC = 0x%04X [RAM] ", old_PC);
-                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(ram[old_PC]), uint(ram[old_PC+1]), e.what());
+                ExitHelper::error(
+                    "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
+                    old_PC, uint(ram[old_PC]), uint(ram[old_PC+1]), e.what()
+                );
             }
             else {
-                fprintf(stderr, "Error at PC = 0x%04X [ROM] ", old_PC);
-                fprintf(stderr, "(OP = 0x%04X, ARG = 0x%04X):\n%s\n", uint(rom_h[old_PC]), uint(rom_l[old_PC]), e.what());
+                ExitHelper::error(
+                    "Error at PC = 0x%04X [ROM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",
+                    old_PC, uint(rom_h[old_PC]), uint(rom_l[old_PC]), e.what()
+                );
             }
-            exit(EXIT_FAILURE);
         }
 
         // Add CPI info
@@ -617,16 +618,20 @@ int32_t CPU::execute(int32_t cycles) {
         
         // Check if we landed on an exit point
         if (is_breakpoint(Globals::exitpoints)) {
-            _KILL_GUARD
-            Terminal::destroy();
-            
             // The exit code is the value stored in a0
             int exit_code = regs.ABI_A0();
+            
             if (exit_code > 0xFF) {
-                fprintf(stderr, "Warning: the exit code 0x%X is bigger than 255 and will be truncated\n", exit_code);
+                ExitHelper::exitCode(
+                    exit_code & 0xFF,
+                    "Warning: the exit code 0x%X is bigger than 255 and will be truncated\n", exit_code
+                );
             }
-            exit(exit_code);
+            else {
+                ExitHelper::exitCode(exit_code, "");
+            }
         }
+        
         // Check if we landed on a breakpoint
         if (Globals::single_step || is_breakpoint(Globals::breakpoints)) {
             Globals::is_paused = true;

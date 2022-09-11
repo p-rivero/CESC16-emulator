@@ -1,5 +1,8 @@
 #include "Disk.h"
 #include "Exceptions/EmulatorException.h"
+#include "Utilities/Assert.h"
+#include "Utilities/ExitHelper.h"
+
 
 // DISK CONTROLLER
 
@@ -45,7 +48,9 @@ word DiskController::read() {
     word data = 0;
     // Poll busy bit until an input is detected
     while ((data & Disk::BUSY_BIT) == 0) {
-        _KILL_GUARD
+        // Acquire exit lock to prevent segfault when the main thread is exiting
+        std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+        
         data = *input;
     }
     assert(data <= 0x3FF);
@@ -56,14 +61,18 @@ word DiskController::read() {
 
 // Write to the output register
 void DiskController::write(word data) {
-    _KILL_GUARD
+    // Acquire exit lock to prevent segfault when the main thread is exiting
+    std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+    
     assert(data <= 0x1FF);
     *output = data;
 }
 
 // Clear the input register
 void DiskController::clear() {
-    _KILL_GUARD
+    // Acquire exit lock to prevent segfault when the main thread is exiting
+    std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+    
     *input = 0;
 }
 
@@ -164,10 +173,7 @@ Disk::Disk() {
             controller.main_loop();
         }
         catch (EmulatorException& e) {
-            _KILL_GUARD
-            destroy_terminal();
-            fprintf(stderr, "Error in Disk controller:\n%s\n", e.what());
-            exit(EXIT_FAILURE);
+            ExitHelper::error("Error in Disk controller:\n%s\n", e.what());
         }
     }).detach();
 }

@@ -30,7 +30,6 @@ private:
     Terminal();
     ~Terminal();
     // Utilities
-    static void fatal_error(const char* msg, ...);
     static void draw_rectangle(int y1, int x1, int y2, int x2, const char *text);
     static void sig_handler(int sig);
     static void size_check();
