@@ -4,7 +4,7 @@
 int64_t Globals::CLK_freq = 2000000;    // Default freq: 2000000 Hz (2 MHz)
 word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 6 instructions
 
-char *Globals::out_file = NULL;         // Don't write output to any file
+char *Globals::out_file = nullptr;         // Don't write output to any file
 bool Globals::strict_flg = false;       // By default, strict mode is disabled (add extra protections)
 bool Globals::silent_flg = false;       // By default, strict mode is disabled (add extra protections)
 // Store the addresses of all the breakpoints and exitpoints

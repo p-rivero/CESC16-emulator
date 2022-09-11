@@ -2,9 +2,6 @@
 
 #include "CPU.h"
 
-#include <fstream>
-#include <chrono>
-#include <thread>
 #include <functional>
 
 class CpuController {

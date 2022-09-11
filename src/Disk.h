@@ -1,8 +1,9 @@
 #pragma once
-#include "includes.h"
+
+#include "Globals.h"
 #include "Memory.h"
+
 #include <string>
-#include <thread>
 
 class DiskController {
 private:

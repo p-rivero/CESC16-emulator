@@ -3,12 +3,14 @@
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
 
+#include <thread>
+
 
 // DISK CONTROLLER
 
 DiskController::DiskController(volatile word *input_reg, volatile word *output_reg) {
-    assert(input_reg != NULL);
-    assert(output_reg != NULL);
+    assert(input_reg != nullptr);
+    assert(output_reg != nullptr);
     
     // Initialize data structures
     currentFile = "";

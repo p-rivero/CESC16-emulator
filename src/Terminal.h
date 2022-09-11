@@ -1,13 +1,11 @@
 #pragma once
 
-#include "includes.h"
+#include "Globals.h"
 #include "Memory.h"
 
 #include <curses.h>
 #include <termios.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
+#include <csignal>
 #include <queue>
 #include <fstream>
 

@@ -2,11 +2,13 @@
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
 
-Terminal *Terminal::term = NULL;
+#include <sys/ioctl.h>
+
+Terminal *Terminal::term = nullptr;
 termios Terminal::shell_settings;
 
 Terminal *Terminal::initialize() {
-    if (term == NULL) {
+    if (term == nullptr) {
         // Make sure window is big enough
         size_check();
         term = new Terminal;
@@ -16,13 +18,13 @@ Terminal *Terminal::initialize() {
 }
 
 void Terminal::destroy() {
-    if (term != NULL) {
+    if (term != nullptr) {
         term->flush(); // Discard any buffered outputs
         delete term;
     }
     // Restore correct settings for shell
     tcsetattr(0, TCSANOW, &shell_settings);
-    term = NULL;
+    term = nullptr;
 }
 
 void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title) {
@@ -97,22 +99,22 @@ void Terminal::init_ncurses() {
 
     // Initialize main window
     mainwin = initscr();
-    if (mainwin == NULL)
+    if (mainwin == nullptr)
         ExitHelper::error("Error initializing main window!\r\n");
 
     // Initialize subwindow (terminal output)
     term_screen = newwin(ROWS, COLS, 1, 1);
-    if (term_screen == NULL)
+    if (term_screen == nullptr)
         ExitHelper::error("Error initializing subwindow!\n");
 
     // Initialize subwindow (status)
     stat_screen = newwin(ROWS, COLS_STATUS, 1, COLS+4);
-    if (stat_screen == NULL)
+    if (stat_screen == nullptr)
         ExitHelper::error("Error initializing subwindow!\n");
         
     // Initialize subwindow (metrics)
     perf_screen = newwin(1, COLS+COLS_STATUS+3, ROWS+3, 1);
-    if (perf_screen == NULL)
+    if (perf_screen == nullptr)
         ExitHelper::error("Error initializing subwindow!\n");
 
     noecho(); // Turn off key echoing
@@ -338,7 +340,7 @@ void Terminal::set_color(color c, int row) {
     wattron(term_screen, COLOR_PAIR(c));
     if (row >= 0) {
         // Set entire line (n=-1) to NORMAL with color c
-        mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, NULL);
+        mvwchgat(term_screen, row, 0, -1, A_NORMAL, c, nullptr);
     }
 }
 

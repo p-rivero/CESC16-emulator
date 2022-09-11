@@ -3,6 +3,8 @@
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
 
+#include <thread>
+
 int Globals::keyboard_delay = 0;
 
 Keyboard::Keyboard() {

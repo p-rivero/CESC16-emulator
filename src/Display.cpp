@@ -3,6 +3,8 @@
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
 
+#include <thread>
+
 int Globals::terminal_delay = 0; // In real hardware this would be 32 microseconds
 
 Display::Display() {

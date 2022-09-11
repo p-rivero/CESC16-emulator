@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Terminal.h"
-#include <thread>
 
 class Keyboard : public MemCell {
 private:
