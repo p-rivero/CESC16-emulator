@@ -14,7 +14,10 @@ Display::Display() {
 }
 
 void Display::set_color(byte color, byte row) {
-    assert(row < ROWS);
+    if (row >= ROWS) {
+        throw EmulatorException("Invalid row " + std::to_string(row) + " in set_color");
+    }
+    
     typedef Terminal::color col;
     const col COLORS[8] = {
         col::BLACK,  col::BLUE,     col::GREEN,  col::CYAN,
@@ -24,12 +27,10 @@ void Display::set_color(byte color, byte row) {
     // support only 8 colors. Convert them to 1 bit per channel.
     
     byte reduced_color = 0; // 3-bit representation of the 6-bit color
-    // If red is 0b10 or 0b11, red bit is set
-    if ((color & 0b110000) >= 0b100000) reduced_color |= 0b100;
-    // If green is 0b10 or 0b11, green bit is set
-    if ((color & 0b001100) >= 0b001000) reduced_color |= 0b010;
-    // If blue is 0b10 or 0b11, blue bit is set
-    if ((color & 0b000011) >= 0b000010) reduced_color |= 0b001;
+    // If a channel is 0b10 or 0b11, set the corresponding bit to 1
+    if (color & 0b100000) reduced_color |= 0b100;
+    if (color & 0b001000) reduced_color |= 0b010;
+    if (color & 0b000010) reduced_color |= 0b001;
     
     cram[row] = COLORS[reduced_color];
     term->set_color(COLORS[reduced_color], row);
@@ -41,7 +42,10 @@ bool Display::is_bit_set(byte data, byte bit_num) {
 
 // Set the color of the line row+1 to the color of the line row
 void Display::propagate_color(int row) {
-    assert(row < ROWS-1);
+    if (row >= ROWS-1 || row < 0) {
+        throw EmulatorException("Invalid row " + std::to_string(row) + " in set_color");
+    }
+    
     Terminal::color col = cram[row];
     cram[row+1] = col;
     term->set_color(col, row+1);
@@ -164,6 +168,7 @@ void Display::process_char(byte inbyte) {
             case '\n':  // Move to a new line
                 mCol = 0;
                 // Also do '\v'
+                [[fallthrough]];
             
             case '\v':  // Vertical tab: LF without CR
                 if (mRow < ROWS-1) {

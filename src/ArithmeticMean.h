@@ -15,7 +15,7 @@ private:
 
 public:
     // Constructor
-    ArithmeticMean(Size length) {
+    explicit ArithmeticMean(Size length) {
         max_size = length;
         current_sum = 0;
     }

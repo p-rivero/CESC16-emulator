@@ -9,22 +9,17 @@ volatile bool Globals::single_step;
 volatile uint64_t Globals::elapsed_cycles;
 std::mutex ExitHelper::exit_mutex;
 
-CPU *CpuController::cpu = nullptr;
+CPU CpuController::cpu;
 std::mutex CpuController::update_mutex;
 
 CpuController::CpuController() {
     // Create and reset CPU
-    if (cpu == nullptr) cpu = new CPU;
-    cpu->reset();
+    cpu.reset();
     
     Globals::is_paused = false;
     if (signal(SIGINT, sig_handler) == SIG_ERR) {
         ExitHelper::error("Error: Couldn't catch SIGINT\n");
     }
-}
-
-CpuController::~CpuController() {
-    if (cpu != nullptr) delete cpu;
 }
 
 void CpuController::sig_handler(int sig) {
@@ -45,7 +40,7 @@ void CpuController::read_ROM_file(const char* filename) {
     word high, low;
     while (hex_file >> std::hex >> high) {
         assert(hex_file >> std::hex >> low);
-        cpu->write_ROM(address++, high, low);
+        cpu.write_ROM(address++, high, low);
 
         // File too large for 16 bits of address space
         if (address > 0xFFFF) {
@@ -63,19 +58,19 @@ void CpuController::read_ROM_file(const char* filename) {
 
 
 
-void CpuController::timer_start(std::function<void(CPU*)> func, unsigned int interval) {
+void CpuController::timer_start(std::function<void(CPU& cpu)> func, unsigned int interval) {
     std::thread([this, func, interval]() {
         while (true) {
             auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
-            func(this->cpu);
+            func(cpu);
             std::this_thread::sleep_until(x);
         }
     }).detach();
 }
 
-void CpuController::call_update(CPU *cpu) {
+void CpuController::call_update(CPU& cpu) {
     std::lock_guard<std::mutex> lock(update_mutex);
-    cpu->update();
+    cpu.update();
 }
 
 
@@ -113,7 +108,7 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) {
         auto x = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
         // Store the used extra cycles and subtract them from the next execution
         update_mutex.lock();
-        extra_cycles = cpu->execute(CYCLES - extra_cycles);
+        extra_cycles = cpu.execute(CYCLES - extra_cycles);
         update_mutex.unlock();
 
         if (std::chrono::steady_clock::now() > x) {
@@ -132,9 +127,9 @@ void CpuController::run_slow() {
 
         // Request only 1 clock cycle so that exactly 1 instruction is executed.
         // Returned value is (required_timesteps - 1): sleep to simulate the instruction timesteps
-        // The execution time of cpu->execute() is negligible at low clock speeds
+        // The execution time of cpu.execute() is negligible at low clock speeds
         update_mutex.lock();
-        int32_t required_timesteps = cpu->execute(1) + 1;
+        int32_t required_timesteps = cpu.execute(1) + 1;
         update_mutex.unlock();
         int64_t required_us = TEN_RAISED_6 * required_timesteps / Globals::CLK_freq;
         

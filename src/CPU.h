@@ -120,10 +120,6 @@ public:
     CPU() {
         terminal = Terminal::initialize();
     }
-    ~CPU() {
-        Terminal::destroy();
-    }
-
 
     // Reset CPU
     void reset();
