@@ -1,5 +1,7 @@
 #include "CpuController.h"
 
+#include <unistd.h>
+
 // Initialize global variables
 int64_t Globals::CLK_freq = 2000000;    // Default freq: 2000000 Hz (2 MHz)
 word Globals::OS_critical_instr = 6;    // Don't interrupt the CPU on the first 6 instructions

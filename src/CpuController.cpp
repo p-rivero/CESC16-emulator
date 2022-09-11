@@ -2,6 +2,8 @@
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
 
+#include <thread>
+
 volatile bool Globals::is_paused;
 volatile bool Globals::single_step;
 volatile uint64_t Globals::elapsed_cycles;
