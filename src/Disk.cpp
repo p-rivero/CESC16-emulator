@@ -167,7 +167,8 @@ void DiskController::getInfo() {
 // DISK PERIPHERAL
 
 Disk::Disk() {
-    input_reg = output_reg = 0;
+    input_reg = 0;
+    output_reg = 0;
     
     std::thread([this]() {
         try {

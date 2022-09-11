@@ -24,12 +24,10 @@ void Display::set_color(byte color, byte row) {
     // support only 8 colors. Convert them to 1 bit per channel.
     
     byte reduced_color = 0; // 3-bit representation of the 6-bit color
-    // If red is 0b10 or 0b11, red bit is set
-    if ((color & 0b110000) >= 0b100000) reduced_color |= 0b100;
-    // If green is 0b10 or 0b11, green bit is set
-    if ((color & 0b001100) >= 0b001000) reduced_color |= 0b010;
-    // If blue is 0b10 or 0b11, blue bit is set
-    if ((color & 0b000011) >= 0b000010) reduced_color |= 0b001;
+    // If a channel is 0b10 or 0b11, set the corresponding bit to 1
+    if (color & 0b100000) reduced_color |= 0b100;
+    if (color & 0b001000) reduced_color |= 0b010;
+    if (color & 0b000010) reduced_color |= 0b001;
     
     cram[row] = COLORS[reduced_color];
     term->set_color(COLORS[reduced_color], row);

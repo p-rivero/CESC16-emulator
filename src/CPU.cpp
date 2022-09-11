@@ -50,7 +50,8 @@ word CPU::ALU_result(byte funct, word A, word B) {
     if (funct == 0b000) return B;  // mov
 
     word result;
-    uint32_t true_result;
+    // true_result is used to detect overflow. Undefined in logical operations
+    uint32_t true_result = -1;
 
     switch (funct) {
     case 0b001: result = A&B; break; // and
@@ -131,7 +132,6 @@ bool CPU::is_condition_met(byte cond) {
     
     default:
         throw EmulatorException("Invalid jump condition: " + std::to_string(cond));
-        break;
     }
     return false;
 }
@@ -208,7 +208,6 @@ int CPU::exec_INSTR(word opcode) {
     
     default:
         throw EmulatorException("Unreachable opcode: " + std::to_string(opcode));
-        break;
     }
 
     // Increment PC at the end of instruction
@@ -385,7 +384,6 @@ int CPU::exec_SHFT(word opcode) {
     
     default:
         throw EmulatorException("Unreachable shift op: " + std::to_string(op));
-        break;
     }
     
     regs[rD] = result;
@@ -402,12 +400,6 @@ int CPU::exec_MEM(word opcode) {
     switch (extract_bitfield(opcode, 12, 8)) {
     case 0b00000: { // movb
         throw EmulatorException("MOVB is deprecated and cannot be used");
-        word data = ram[regs[rA] + argument];
-        // Sign extend
-        data &= 0x00FF;
-        if (extract_bit(data, 7)) data |= 0xFF00;
-        regs[rD] = data;
-        return 3;
     }
     case 0b00001: { // swap
         word address = regs[rA] + argument;
@@ -450,10 +442,10 @@ int CPU::exec_MEM(word opcode) {
     
     default:
         throw IllegalOpcodeException();
-        break;
     }
 
-    throw EmulatorException("Unreachable code (mem)!");
+    // Unreachable
+    assert(false);
     return 0;
 }
 
@@ -546,7 +538,6 @@ int CPU::exec_CALL(word opcode) {
     
     default:
         throw IllegalOpcodeException();
-        break;
     }
 
     return cycles;
@@ -614,7 +605,8 @@ int32_t CPU::execute(int32_t cycles) {
         cycles -= used_cycles;
         
         // Increment global count to be displayed
-        Globals::elapsed_cycles += used_cycles;
+        Globals::elapsed_cycles = Globals::elapsed_cycles + used_cycles;
+        // (+= is deprecated for volatile variables)
         
         // Check if we landed on an exit point
         if (is_breakpoint(Globals::exitpoints)) {

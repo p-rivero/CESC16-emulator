@@ -233,7 +233,7 @@ void Terminal::update_input() {
             case KEY_NPAGE:     input_buffer.push(0x0C); break;
             case KEY_HOME:      input_buffer.push('\r'); break;
             case KEY_IC:        input_buffer.push(0x0E); break;
-            case KEY_END:       input_buffer.push('\e'); break;
+            case KEY_END:       input_buffer.push(0x1B); break;
             case KEY_LEFT:      input_buffer.push(0x1C); break;
             case KEY_RIGHT:     input_buffer.push(0x1D); break;
             case KEY_DOWN:      input_buffer.push(0x1E); break;
