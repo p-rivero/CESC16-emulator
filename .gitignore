@@ -1,3 +1,5 @@
 .vscode
 CESC_Emu
 *.o
+.scannerwork
+bw-output

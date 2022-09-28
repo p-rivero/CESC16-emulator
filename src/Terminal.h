@@ -15,8 +15,10 @@ class Terminal {
 
 private:
     static Terminal *term;
-    WINDOW *mainwin, *term_screen, *stat_screen, *perf_screen;
-    byte current_input = 0;
+    WINDOW *mainwin;
+    WINDOW *term_screen;
+    WINDOW *stat_screen;
+    WINDOW *perf_screen;
     sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
     static termios shell_settings; // Terminal settings received from shell
     termios curses_settings; // Terminal settings after setting up ncurses windows
@@ -67,5 +69,5 @@ public:
     // Set color of cursor. If row>=0, also move the cursor to a given row and change its color
     void set_color(color c, int row);
     // Enable or disable cursor blinking
-    void set_cursor_blink(bool blink);
+    void set_cursor_blink(bool blink) const;
 };

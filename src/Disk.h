@@ -9,11 +9,11 @@ class DiskController {
 private:
     volatile word *input;
     volatile word *output;
-    std::string currentFile; // 8.3 filename (8 char long name + 3 char long extension)
+    std::string currentFile = ""; // 8.3 filename (8 char long name + 3 char long extension)
     std::string currentDir;
     bool file_is_open = false;
     
-    word read();
+    word read() const;
     void write(word data);
     void clear();
     
@@ -21,8 +21,8 @@ private:
     void writeByteStream(byte *buffer, int length);
     void readByteStream(byte *buffer, int length);
     
-    inline void checkFileIsOpen(std::string funct);
-    inline void checkSetFileName(std::string funct);
+    inline void checkFileIsOpen(const std::string& funct) const;
+    inline void checkSetFileName(const std::string& funct) const;
     
     void setFileName();
     void openFile();
@@ -47,8 +47,8 @@ public:
 
 class Disk : public MemCell {
 private:
-    volatile word input_reg;
-    volatile word output_reg;
+    volatile word input_reg = 0;
+    volatile word output_reg = 0;
     
 public:
     static const int BUSY_BIT = 1 << 9;
@@ -72,8 +72,8 @@ public:
     Disk();
     
     // WRITE
-    virtual MemCell& operator=(word rhs);
+    MemCell& operator=(word rhs) override;
     // READ
-    virtual operator int() const;
+    operator word() const override;
     
 };

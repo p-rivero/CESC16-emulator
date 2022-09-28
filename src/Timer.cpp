@@ -44,6 +44,6 @@ MemCell& Timer::operator=(word rhs) {
 }
 
 // Read the current value of the timer
-Timer::operator int() const {
-    return timer_count >> 4;
+Timer::operator word() const {
+    return word(timer_count >> 4);
 }

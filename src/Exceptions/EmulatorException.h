@@ -7,8 +7,8 @@ class EmulatorException : public std::exception {
 private:
     std::string msg;
 public:
-    EmulatorException(const std::string& msg) : msg(msg) {}
-    virtual const char* what() const throw() {
+    explicit EmulatorException(const std::string& msg) : msg(msg) {}
+    const char* what() const throw() override {
         return msg.c_str();
     }
 };

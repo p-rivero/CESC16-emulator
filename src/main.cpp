@@ -47,11 +47,11 @@ void add_breakpoint(const char *addr, std::vector<word>& breakpoints) {
         fprintf(stderr, "Error: Invalid breakpoint [%s], make sure it's a valid hex integer\n", addr);
         exit(EXIT_FAILURE);
     }
-    if (address < 0 or address >= 0xFFFF) {
+    if (address < 0 || address >= 0xFFFF) {
         fprintf(stderr, "Error: Invalid breakpoint [%s], make sure it's between 0 and 0xFFFF\n", addr);
         exit(EXIT_FAILURE);
     }
-    breakpoints.push_back(address);
+    breakpoints.push_back(word(address));
 }
 
 int main (int argc, char **argv) {
@@ -82,7 +82,7 @@ int main (int argc, char **argv) {
             break;
             
         case 'k':   // Set keyboard delay
-            Globals::keyboard_delay = atoll(optarg);
+            Globals::keyboard_delay = atoi(optarg);
             if (Globals::keyboard_delay < 0) {
                 fprintf(stderr, "Error: Invalid keyboard delay, make sure it's a positive integer\n");
                 exit(EXIT_FAILURE);
@@ -102,7 +102,7 @@ int main (int argc, char **argv) {
             break;
             
         case 't':   // Set terminal delay
-            Globals::terminal_delay = atoll(optarg);
+            Globals::terminal_delay = atoi(optarg);
             if (Globals::terminal_delay < 0) {
                 fprintf(stderr, "Error: Invalid terminal delay, make sure it's a positive integer\n");
                 exit(EXIT_FAILURE);
@@ -114,7 +114,7 @@ int main (int argc, char **argv) {
             break;
             
         case '?':   // Error
-            if (optopt == 'b' or optopt == 'f' or optopt == 'o' or optopt == 't') {
+            if (optopt == 'b' || optopt == 'f' || optopt == 'o' || optopt == 't') {
                 // Options that take an argument
                 fprintf(stderr, "Error: An argument is required for the option -%c\n", optopt);
             }

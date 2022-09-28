@@ -1,5 +1,5 @@
 # todo: once finished this can be replaced by -O2
-OPTIONS = -g
+OPTIONS = -g -std=c++17
 
 BIN_NAME = CESC_Emu
 

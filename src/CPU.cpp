@@ -3,19 +3,8 @@
 #include "Exceptions/IllegalOpcodeException.h"
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
+#include <algorithm>
 
-
-// Returns the value encoded between bit_left and bit_right (both included)
-word CPU::extract_bitfield(word original, byte bit_left, byte bit_right) {
-    assert(bit_left >= bit_right);
-    word mask = (uint(1) << (bit_left+1 - bit_right)) - 1;
-    return (original >> bit_right) & mask;
-}
-
-// Returns the bit encoded in a given position (0 or 1)
-byte CPU::extract_bit(word original, byte bit_pos) {
-    return extract_bitfield(original, bit_pos, bit_pos);
-}
 
 // Returns the argument pointed by the PC
 word CPU::fetch_argument() {
@@ -67,11 +56,11 @@ word CPU::ALU_result(byte funct, word A, word B) {
         B = ~B; // Invert second operand for overflow computation
         break;
     case 0b110: // addc
-        result = A+B + Flags.C;
+        result = A+B + word(Flags.C);
         true_result = uint32_t(A) + uint32_t(B) + uint32_t(Flags.C);
         break;
     case 0b111: // subb
-        result = A-B - Flags.C;
+        result = A-B - word(Flags.C);
         true_result = uint32_t(A) - uint32_t(B) - uint32_t(Flags.C);
         B = ~B; // Invert second operand for overflow computation
         break;
@@ -90,7 +79,7 @@ word CPU::ALU_result(byte funct, word A, word B) {
 }
 
 // Returns true if the jump condition is met and the jump has to be performed
-bool CPU::is_condition_met(byte cond) {
+bool CPU::is_condition_met(byte cond) const {
     switch (cond) {
     case 0b0000: // jmp
         return true;
@@ -139,17 +128,15 @@ bool CPU::is_condition_met(byte cond) {
 }
 
 // Returns true if the OS is ready to be interrupted (handlers have been initialized)
-bool CPU::is_OS_ready() {
+bool CPU::is_OS_ready() const {
     // 1. We suppose that all the critical work is done on the first instructions
     // 2. This extra protection layer isn't present in the real CPU. If strict_flg is set, return true
     return Globals::strict_flg || (PC >= Globals::OS_critical_instr);
 }
 
-bool CPU::is_breakpoint(const std::vector<word>& breakpoints) {
-    for (int i = 0; i < breakpoints.size(); i++)
-        if (PC == breakpoints[i]) return true;
-
-    return false;
+bool CPU::is_breakpoint(const std::vector<word>& breakpoints) const {
+    // Return true if PC is in the breakpoints vector
+    return std::find(breakpoints.begin(), breakpoints.end(), PC) != breakpoints.end();
 }
 
 
@@ -160,10 +147,10 @@ int CPU::exec_INSTR(word opcode) {
     increment_PC = true;
 
     // Decode instruction
-    switch (extract_bitfield(opcode, 15, 13)) {
+    switch (get_bits<15,13>(opcode)) {
     case 0b000:
         // ALU or shift operation
-        if (extract_bit(opcode, 12) == 0) {
+        if (get_bit<12>(opcode) == 0) {
             // 0000... -> ALU op
             used_cycles = exec_ALU_reg(opcode);
         }
@@ -220,10 +207,10 @@ int CPU::exec_INSTR(word opcode) {
 
 // Execute an ALU operation (operands in registers). Returns the used cycles
 int CPU::exec_ALU_reg(word opcode) {
-    bool immediate_mode = extract_bit(opcode, 11);
-    byte funct = extract_bitfield(opcode, 10, 8);
-    byte rD = extract_bitfield(opcode, 7, 4);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    bool immediate_mode = get_bit<11>(opcode);
+    byte funct = get_bits<10,8>(opcode);
+    byte rD = get_bits<7,4>(opcode);
+    byte rA = get_bits<3,0>(opcode);
 
     bool is_mov = (funct == 0b000);
 
@@ -232,7 +219,7 @@ int CPU::exec_ALU_reg(word opcode) {
     if (immediate_mode)
         regs[rD] = ALU_result(funct, regs[rA], argument);
     else {
-        byte rB = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<3,0>(argument);
         // mov register to register uses rA instead of rB
         if (is_mov) rB = rA;
 
@@ -244,10 +231,10 @@ int CPU::exec_ALU_reg(word opcode) {
 
 // Execute an ALU operation (operand in memory). Returns the used cycles
 int CPU::exec_ALU_m_op(word opcode) {
-    byte addr_mode = extract_bitfield(opcode, 12, 11);
-    byte funct = extract_bitfield(opcode, 10, 8);
-    byte rD = extract_bitfield(opcode, 7, 4);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    byte addr_mode = get_bits<12,11>(opcode);
+    byte funct = get_bits<10,8>(opcode);
+    byte rD = get_bits<7,4>(opcode);
+    byte rA = get_bits<3,0>(opcode);
 
     word argument = fetch_argument();
     int cycles = 4;
@@ -258,7 +245,7 @@ int CPU::exec_ALU_m_op(word opcode) {
     }
     else if (addr_mode == 0b01) {
         // Indirect addressing: OP rD, rA, [rB]
-        byte rB = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<3,0>(argument);
         regs[rD] = ALU_result(funct, regs[rA], ram[regs[rB]]);
     }
     else if (addr_mode == 0b10) {
@@ -269,7 +256,7 @@ int CPU::exec_ALU_m_op(word opcode) {
     }
     else /* addr_mode == 0b11 */ {
         // Indexed addressing: OP rD, [rA+rB]
-        byte rB = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<3,0>(argument);
         word address = regs[rA] + regs[rB];
         regs[rD] = ALU_result(funct, regs[rD], ram[address]);
         cycles = 5;
@@ -281,9 +268,9 @@ int CPU::exec_ALU_m_op(word opcode) {
 
 // Execute an ALU operation (destination in memory). Returns the used cycles
 int CPU::exec_ALU_m_dest(word opcode) {
-    byte addr_mode = extract_bitfield(opcode, 12, 11);
-    byte funct = extract_bitfield(opcode, 10, 8);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    byte addr_mode = get_bits<12,11>(opcode);
+    byte funct = get_bits<10,8>(opcode);
+    byte rA = get_bits<3,0>(opcode);
 
     word argument = fetch_argument();
     int cycles = 4;
@@ -294,20 +281,20 @@ int CPU::exec_ALU_m_dest(word opcode) {
     }
     else if (addr_mode == 0b01) {
         // Indirect addressing: OP [rA], rB
-        byte rB = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<3,0>(argument);
         ram[regs[rA]] = ALU_result(funct, ram[regs[rA]], regs[rB]);
     }
     else if (addr_mode == 0b10) {
         // Indexed addressing: OP [rA+imm], rB
-        byte rB = extract_bitfield(opcode, 7, 4);
+        byte rB = get_bits<7,4>(opcode);
         word address = regs[rA] + argument;
         ram[address] = ALU_result(funct, ram[address], regs[rB]);
         cycles = 5;
     }
     else /* addr_mode == 0b11 */ {
         // Indexed addressing: OP [rA+rC], rB
-        byte rB = extract_bitfield(opcode, 7, 4);
-        byte rC = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<7,4>(opcode);
+        byte rC = get_bits<3,0>(argument);
         word address = regs[rA] + regs[rC];
         ram[address] = ALU_result(funct, ram[address], regs[rB]);
         cycles = 5;
@@ -319,10 +306,10 @@ int CPU::exec_ALU_m_dest(word opcode) {
 
 // Execute an ALU operation (destination in memory). Returns the used cycles
 int CPU::exec_ALU_mem_imm(word opcode) {
-    byte addr_mode = extract_bitfield(opcode, 12, 11);
-    byte funct = extract_bitfield(opcode, 10, 8);
-    word imm4 = extract_bitfield(opcode, 7, 4);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    byte addr_mode = get_bits<12,11>(opcode);
+    byte funct = get_bits<10,8>(opcode);
+    word imm4 = get_bits<7,4>(opcode);
+    byte rA = get_bits<3,0>(opcode);
 
     word argument = fetch_argument();
     int cycles = 4;
@@ -344,7 +331,7 @@ int CPU::exec_ALU_mem_imm(word opcode) {
     }
     else /* addr_mode == 0b11 */ {
         // Indexed addressing: OP [rA+rC], imm4
-        byte rC = extract_bitfield(argument, 3, 0);
+        byte rC = get_bits<3,0>(argument);
         word address = regs[rA] + regs[rC];
         ram[address] = ALU_result(funct, ram[address], imm4);
         cycles = 5;
@@ -356,12 +343,11 @@ int CPU::exec_ALU_mem_imm(word opcode) {
 
 // Execute a bit shift. Returns the used cycles
 int CPU::exec_SHFT(word opcode) {
-    byte op = extract_bitfield(opcode, 13, 12);
-    byte shamt = extract_bitfield(opcode, 11, 8);
-    byte rD = extract_bitfield(opcode, 7, 4);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    byte op = get_bits<13,12>(opcode);
+    byte shamt = get_bits<11,8>(opcode);
+    byte rD = get_bits<7,4>(opcode);
+    byte rA = get_bits<3,0>(opcode);
     word result;
-    uint32_t true_result;
 
     switch (op) {
     case 0b01: // sll
@@ -395,11 +381,11 @@ int CPU::exec_SHFT(word opcode) {
 
 // Execute a memory operation. Returns the used cycles
 int CPU::exec_MEM(word opcode) {
-    byte rD = extract_bitfield(opcode, 7, 4);
-    byte rA = extract_bitfield(opcode, 3, 0);
+    byte rD = get_bits<7,4>(opcode);
+    byte rA = get_bits<3,0>(opcode);
     word argument = fetch_argument();
 
-    switch (extract_bitfield(opcode, 12, 8)) {
+    switch (get_bits<12,8>(opcode)) {
     case 0b00000: { // movb
         throw EmulatorException("MOVB is deprecated and cannot be used");
     }
@@ -419,7 +405,7 @@ int CPU::exec_MEM(word opcode) {
 
     case 0b00100: { // push (reg)
         assert(rA == 0b0001);
-        byte rB = extract_bitfield(argument, 3, 0);
+        byte rB = get_bits<3,0>(argument);
         push(regs[rB]);
         return 3;
     }
@@ -438,7 +424,7 @@ int CPU::exec_MEM(word opcode) {
         return 3;
     case 0b01000: // popf
         assert(rA == 0b0001);
-        FLG = pop();
+        FLG = byte(pop());
         assert((FLG & 0xF0) == 0); // Top bits should be 0
         return 3;
     
@@ -453,14 +439,14 @@ int CPU::exec_MEM(word opcode) {
 
 // Execute a jump. Returns the used cycles
 int CPU::exec_JMP(word opcode) {
-    byte cond = extract_bitfield(opcode, 11, 8);
-
-    if (!is_condition_met(cond)) return 2; // Jump is not taken
+    // Get encoded jump condition and check if it is true
+    if (byte cond = get_bits<11,8>(opcode); !is_condition_met(cond))
+        return 2; // Jump is not taken
 
     // Jump is taken
-    if (extract_bit(opcode, 12) == 0) {
+    if (get_bit<12>(opcode) == 0) {
         // Jump to address in register
-        byte rA = extract_bitfield(opcode, 3, 0);
+        byte rA = get_bits<3,0>(opcode);
         PC = regs[rA];
     }
     else {
@@ -476,10 +462,10 @@ int CPU::exec_JMP(word opcode) {
 // Execute a call/ret operation. Returns the used cycles
 int CPU::exec_CALL(word opcode) {
     word argument = fetch_argument();
-    byte rB = extract_bitfield(argument, 3, 0);
+    byte rB = get_bits<3,0>(argument);
 
     word destination;
-    if (extract_bit(opcode, 8) == 0) destination = regs[rB]; // REG variant
+    if (get_bit<8>(opcode) == 0) destination = regs[rB]; // REG variant
     else destination = argument; // IMM variant
 
     // do not increment the PC after executing this instruction
@@ -487,36 +473,36 @@ int CPU::exec_CALL(word opcode) {
 
     int cycles = 4;
 
-    switch (extract_bitfield(opcode, 12, 9)) {
+    switch (get_bits<12,9>(opcode)) {
     case 0b0000: // call
-        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+        assert((get_bits<3,0>(opcode)) == 0b0001);
         push(PC_plus_1());
         PC = destination;
         break;
         
     case 0b0001: // syscall
-        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+        assert((get_bits<3,0>(opcode)) == 0b0001);
         push(PC_plus_1());
         PC = destination;
         user_mode = false;
         break;
 
     case 0b0010: // enter
-        assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+        assert((get_bits<3,0>(opcode)) == 0b0001);
         push(PC_plus_1());
         PC = destination;
         user_mode = true;
         break;
 
     case 0b0011:
-        if (extract_bit(opcode, 8) == 0) {
-            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+        if (get_bit<8>(opcode) == 0) {
+            assert((get_bits<3,0>(opcode)) == 0b0001);
             // 0b00110 -> ret
             PC = pop();
             cycles = 3;
         }
         else {
-            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+            assert((get_bits<3,0>(opcode)) == 0b0001);
             // 0b00111 -> sysret
             PC = pop();
             user_mode = true;
@@ -525,8 +511,8 @@ int CPU::exec_CALL(word opcode) {
         break;
     
     case 0b0100: // exit
-        if (extract_bit(opcode, 8) == 0) {
-            assert(extract_bitfield(opcode, 3, 0) == 0b0001);
+        if (get_bit<8>(opcode) == 0) {
+            assert((get_bits<3,0>(opcode)) == 0b0001);
             // 0b01000 -> exit
             PC = pop();
             user_mode = false;
@@ -574,7 +560,7 @@ int32_t CPU::execute(int32_t cycles) {
             IRQ = false;
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
-        catch (EmulatorException& e) {
+        catch (const EmulatorException& e) {
             ExitHelper::error("Error while processing interrupt:\n%s\n", e.what());
         }
 
@@ -585,7 +571,7 @@ int32_t CPU::execute(int32_t cycles) {
             used_cycles = exec_INSTR(opcode);
             if (timer.tick(used_cycles)) IRQ = true; // If an overflow occurs, trigger interrupt
         }
-        catch (EmulatorException& e) {
+        catch (const EmulatorException& e) {
             if (user_mode) {
                 ExitHelper::error(
                     "Error at PC = 0x%04X [RAM] (OP = 0x%04X, ARG = 0x%04X):\n%s\n",

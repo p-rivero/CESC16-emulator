@@ -44,7 +44,8 @@ private:
     Disk disk;
 
     // Memory banks: ROM (32 bit), RAM (16 bit)
-    Rom rom_l, rom_h;
+    Rom rom_l; // Lower 16 bits of ROM
+    Rom rom_h; // Upper 16 bits of ROM
     Ram ram = Ram(keyboard, display, timer, disk); // 4 IO devices
 
 
@@ -52,11 +53,21 @@ private:
     // HELPER FUNCTIONS
 
     // Returns the value encoded between bit_left and bit_right (both included)
-    static inline word extract_bitfield(word original, byte bit_left, byte bit_right);
+    template < byte bit_left, byte bit_right,
+        typename T = typename std::conditional_t<(bit_left - bit_right) < 8, byte, word> >
+    T get_bits(word value) const {
+        static_assert(bit_left >= bit_right);
+        static_assert(bit_left < 16);
+        return (value >> bit_right) & ((1 << (bit_left - bit_right + 1)) - 1);
+    }
 
     // Returns the bit encoded in a given position (0 or 1)
-    static inline byte extract_bit(word original, byte bit_pos);
-
+    template <byte bit_index>
+    bool get_bit(word value) const {
+        static_assert(bit_index < 16);
+        return (value >> bit_index) & 1;
+    }
+    
     // Returns the argument pointed by the PC
     inline word fetch_argument();
 
@@ -73,13 +84,13 @@ private:
     word ALU_result(byte funct, word A, word B);
 
     // Returns true if the jump condition is met and the jump has to be performed
-    bool is_condition_met(byte cond);
+    bool is_condition_met(byte cond) const;
 
     // Returns true if the OS is ready to be interrupted (handlers have been initialized)
-    inline bool is_OS_ready();
+    inline bool is_OS_ready() const;
 
     // Returns true if a breakpoint (from the provided list) has been set at current PC
-    inline bool is_breakpoint(const std::vector<word>& breakpoints);
+    inline bool is_breakpoint(const std::vector<word>& breakpoints) const;
 
 
 

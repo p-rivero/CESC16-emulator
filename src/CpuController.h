@@ -3,6 +3,7 @@
 #include "CPU.h"
 
 #include <functional>
+#include <thread>
 
 class CpuController {
 private:
@@ -12,16 +13,14 @@ private:
     static std::mutex update_mutex;
 
     static void sig_handler(int sig);
-
-    void timer_start(std::function<void(CPU& cpu)> func, unsigned int interval);
-    static void call_update(CPU& cpu);
-    void run_fast(int32_t CYCLES, int32_t sleep_us);
-    void run_slow();
+    static void call_update();
+    void run_fast(int32_t CYCLES, int32_t sleep_us) const;
+    void run_slow() const;
 
 
 public:
     CpuController();
     
-    void read_ROM_file(const char* filename);
-    void execute();
+    void read_ROM_file(const char* filename) const;
+    void execute() const;
 };

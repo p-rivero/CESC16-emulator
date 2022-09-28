@@ -10,7 +10,7 @@ MemCell& MemCell::operator=(word rhs) {
     return *this;
 }
 // READ
-MemCell::operator int() const {
+MemCell::operator word() const {
     return val_;
 }
 
@@ -18,14 +18,8 @@ MemCell::operator int() const {
 
 // REGISTER
 
-Reg::Reg() {
-    zero_reg = false;
-    val_ = 0;
-}
-Reg::Reg(bool is_zero) {
-    zero_reg = is_zero;
-    val_ = 0;
-}
+Reg::Reg(bool is_zero) : zero_reg(is_zero) { }
+
 // WRITE to register
 MemCell& Reg::operator=(word rhs) {
     // Register zero is non-writable
@@ -68,9 +62,9 @@ using Rom = Mem;
 
 // RAM
 
-Ram::Ram(MemCell& p0, MemCell& p1, MemCell& p2, MemCell& p3) {
-    Port0 = &p0;  Port1 = &p1;  Port2 = &p2;  Port3 = &p3;
-}
+Ram::Ram(MemCell& p0, MemCell& p1, MemCell& p2, MemCell& p3) : 
+    Port0(&p0), Port1(&p1), Port2(&p2), Port3(&p3) { }
+    
 // Memory mapping of RAM and IO
 MemCell& Ram::operator[](word addr) { 
     // 0000-FEFF: RAM

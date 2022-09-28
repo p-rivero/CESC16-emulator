@@ -14,7 +14,7 @@ class Timer : public MemCell {
 
 private:
     // Value of the timer when the count ends
-    static const int END_COUNT = 0xF000;   // TODO: Once the hardware bug is fixed, change to 0x10000
+    static const int END_COUNT = 0xF000;   // This value should be 0x10000. The restricted range is a workaround for a hardware bug 
     
     /* Bits 0..3  = Ignored, 16x prescaler for the timer
        Bits 4..20 = The 16-bit timer itself
@@ -29,9 +29,9 @@ private:
 
 public:
     // WRITE: Set the current timer value
-    virtual MemCell& operator=(word rhs);
+    MemCell& operator=(word rhs) override;
     // READ: Read the current value of the timer
-    virtual operator int() const;
+    operator word() const override;
 
     // Tick the timer for a number of clock cycles
     // Returns true only if an overflow has occurred

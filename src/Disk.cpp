@@ -8,21 +8,14 @@
 
 // DISK CONTROLLER
 
-DiskController::DiskController(volatile word *input_reg, volatile word *output_reg) {
+DiskController::DiskController(volatile word *input_reg, volatile word *output_reg) : input(input_reg), output(output_reg) {
     assert(input_reg != nullptr);
     assert(output_reg != nullptr);
-    
-    // Initialize data structures
-    currentFile = "";
-    input = input_reg;
-    output = output_reg;
 }
 
 void DiskController::main_loop() {
     while (true) {
-        word cmd = read();
-        
-        switch (cmd) {
+        switch (word cmd = read(); cmd) {
             case Disk::CMD_setFileName: setFileName(); break;
             case Disk::CMD_openFile: openFile(); break;
             case Disk::CMD_closeFile: closeFile(); break;
@@ -46,12 +39,12 @@ void DiskController::main_loop() {
 }
 
 // Read the input register
-word DiskController::read() {
+word DiskController::read() const {
     word data = 0;
     // Poll busy bit until an input is detected
     while ((data & Disk::BUSY_BIT) == 0) {
         // Acquire exit lock to prevent segfault when the main thread is exiting
-        std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+        std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
         
         data = *input;
     }
@@ -64,7 +57,7 @@ word DiskController::read() {
 // Write to the output register
 void DiskController::write(word data) {
     // Acquire exit lock to prevent segfault when the main thread is exiting
-    std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+    std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
     
     assert(data <= 0x1FF);
     *output = data;
@@ -73,7 +66,7 @@ void DiskController::write(word data) {
 // Clear the input register
 void DiskController::clear() {
     // Acquire exit lock to prevent segfault when the main thread is exiting
-    std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+    std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
     
     *input = 0;
 }
@@ -85,11 +78,11 @@ void DiskController::expectAck() {
 }
 
 
-void DiskController::checkFileIsOpen(std::string funct) {
+void DiskController::checkFileIsOpen(const std::string& funct) const {
     if (!file_is_open)
         throw EmulatorException(funct + " was called but no file was open");
 }
-void DiskController::checkSetFileName(std::string funct) {
+void DiskController::checkSetFileName(const std::string& funct) const {
     if (currentFile.empty())
         throw EmulatorException(funct + " was called without using setFileName first");
 }
@@ -167,15 +160,12 @@ void DiskController::getInfo() {
 // DISK PERIPHERAL
 
 Disk::Disk() {
-    input_reg = 0;
-    output_reg = 0;
-    
     std::thread([this]() {
         try {
             DiskController controller(&input_reg, &output_reg);
             controller.main_loop();
         }
-        catch (EmulatorException& e) {
+        catch (const EmulatorException& e) {
             ExitHelper::error("Error in Disk controller:\n%s\n", e.what());
         }
     }).detach();
@@ -197,7 +187,7 @@ MemCell& Disk::operator=(word rhs) {
 }
 
 // READ
-Disk::operator int() const {
+Disk::operator word() const {
     assert(output_reg <= 0x1FF);
     // The read value contains the busy bit from the input register
     return output_reg | (input_reg & BUSY_BIT);

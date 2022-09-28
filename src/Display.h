@@ -2,6 +2,8 @@
 
 #include "Terminal.h"
 
+#include <array>
+
 class Display : public MemCell {
 private:
     static const int ROWS = Terminal::ROWS;
@@ -14,13 +16,14 @@ private:
     enum {FIRST_BYTE = 0, SET_COLOR_LINE, SET_COLOR_SCREEN};
     byte next_byte = FIRST_BYTE;
     // Store the state of the cursor, so it can be restored later
-    byte old_mRow, old_mCol;
+    int stored_mRow;
+    int stored_mCol;
     // Store the color of each row. Initialize all to white
-    Terminal::color cram[ROWS];
+    std::array<Terminal::color,ROWS> cram;
     
     static inline bool is_bit_set(byte data, byte bit_num);
     void process_char(byte inbyte);
-    void set_color(byte color, byte row);
+    void set_color(byte color, int row);
     inline void propagate_color(int row);
     inline void update_cursor_color(int row);
 
@@ -28,7 +31,7 @@ public:
     Display();
 
     // WRITE
-    virtual MemCell& operator=(word rhs);
+    MemCell& operator=(word rhs) override;
     // READ
-    virtual operator int() const;
+    operator word() const override;
 };

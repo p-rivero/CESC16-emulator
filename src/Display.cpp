@@ -4,6 +4,7 @@
 #include "Utilities/ExitHelper.h"
 
 #include <thread>
+#include <cstddef>
 
 int Globals::terminal_delay = 0; // In real hardware this would be 32 microseconds
 
@@ -13,27 +14,28 @@ Display::Display() {
     for (Terminal::color& c : cram) c = Terminal::color::WHITE;
 }
 
-void Display::set_color(byte color, byte row) {
+void Display::set_color(byte color, int row) {
     if (row >= ROWS) {
         throw EmulatorException("Invalid row " + std::to_string(row) + " in set_color");
     }
     
-    typedef Terminal::color col;
-    const col COLORS[8] = {
+    using col = Terminal::color;
+    static const std::array<col,8> TERM_COLORS = {
         col::BLACK,  col::BLUE,     col::GREEN,  col::CYAN,
         col::RED,    col::MAGENTA,  col::YELLOW, col::WHITE
     };
     // Colors have 2 bits per channel (64 colors), but most terminals
     // support only 8 colors. Convert them to 1 bit per channel.
     
-    byte reduced_color = 0; // 3-bit representation of the 6-bit color
+    std::byte reduced_color{0}; // 3-bit representation of the 6-bit color
     // If a channel is 0b10 or 0b11, set the corresponding bit to 1
-    if (color & 0b100000) reduced_color |= 0b100;
-    if (color & 0b001000) reduced_color |= 0b010;
-    if (color & 0b000010) reduced_color |= 0b001;
+    if (color & 0b100000) reduced_color |= std::byte{0b100};
+    if (color & 0b001000) reduced_color |= std::byte{0b010};
+    if (color & 0b000010) reduced_color |= std::byte{0b001};
+    byte term_color = std::to_integer<byte>(reduced_color);
     
-    cram[row] = COLORS[reduced_color];
-    term->set_color(COLORS[reduced_color], row);
+    cram[row] = TERM_COLORS[term_color];
+    term->set_color(TERM_COLORS[term_color], row);
 }
 
 bool Display::is_bit_set(byte data, byte bit_num) {
@@ -58,7 +60,8 @@ void Display::update_cursor_color(int row) {
 
 // processes a character (see VGA terminal docs)
 void Display::process_char(byte inbyte) {
-    int mRow, mCol;
+    int mRow;
+    int mCol;
     bool update_coords = true;
     term->get_coords(mRow, mCol);   // Read the cursor coordinates
     
@@ -117,15 +120,15 @@ void Display::process_char(byte inbyte) {
             else {
                 if (is_bit_set(inbyte, 0)) {
                     // Restore cursor pos
-                    mRow = old_mRow;
-                    mCol = old_mCol;
+                    mRow = stored_mRow;
+                    mCol = stored_mCol;
                     // New chars are printed in the color of the new line
                     update_cursor_color(mRow);
                 }
                 else {
                     // Save cursor pos
-                    old_mRow = mRow;
-                    old_mCol = mCol;
+                    stored_mRow = mRow;
+                    stored_mCol = mCol;
                 }
             }
         }
@@ -254,18 +257,18 @@ MemCell& Display::operator=(word rhs) {
             std::this_thread::sleep_for(std::chrono::microseconds(Globals::terminal_delay));
             
             // Acquire exit lock to prevent segfault when the main thread is exiting
-            std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+            std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
             
             busy_flag = 0;
         }).detach();
     }
     
     // Output char or process command
-    process_char(rhs);
+    process_char(byte(rhs));
     return *this;
 }
 
 // READ
-Display::operator int() const {
+Display::operator word() const {
     return busy_flag;
 }

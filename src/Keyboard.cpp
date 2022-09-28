@@ -9,9 +9,6 @@ int Globals::keyboard_delay = 0;
 
 Keyboard::Keyboard() {
     term = Terminal::initialize();
-    
-    output_reg = 0; // At startup, clear the output register
-    can_interrupt = false; // At startup, do not send any INT until the OS is ready
 }
 
 // WRITE
@@ -26,9 +23,8 @@ MemCell& Keyboard::operator=(word rhs) {
         throw EmulatorException("Keyboard/Serial: Value written is bigger than 7 bit and will be truncated");
     }
     
-    byte val = rhs & 0x7F;  // Only lower 7 bits are used
-    
-    if (val == ACK) {
+    // Only lower 7 bits are used
+    if (byte val = rhs & 0x7F; val == ACK) {
         // Input acknowledged: clear output register
         output_reg = 0;
     }
@@ -47,7 +43,7 @@ MemCell& Keyboard::operator=(word rhs) {
             std::this_thread::sleep_for(std::chrono::microseconds(Globals::keyboard_delay));
             
             // Acquire exit lock to prevent segfault when the main thread is exiting
-            std::lock_guard<std::mutex> lock(ExitHelper::exit_mutex);
+            std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
             
             busy_flag = false;
         }).detach();
@@ -57,9 +53,9 @@ MemCell& Keyboard::operator=(word rhs) {
 }
 
 // READ
-Keyboard::operator int() const {    
+Keyboard::operator word() const {    
     assert(output_reg <= 0x7F);
-    return output_reg | (busy_flag << 7);
+    return output_reg | word(int(busy_flag) << 7);
 }
 
 
@@ -69,11 +65,9 @@ bool Keyboard::update() {
     // If another char is being presented OR the CPU is in the service routine, don't do anything
     if (output_reg || !can_interrupt) return false;
     
-    byte pressed_key = term->get_input();
-    if (pressed_key != 0) {
+    if (byte pressed_key = term->get_input(); pressed_key != 0) {
         // Write the new char in the output reg (causing an IRQ) and update variables
         output_reg = pressed_key;
-        // output_reg_full = true;
         can_interrupt = false;
         return true;
     }

@@ -10,9 +10,9 @@ namespace ExitHelper {
     extern std::mutex exit_mutex;
 
     namespace {
-        inline static void exit_impl(int code, const char *format, va_list args) {
+        inline void exit_impl(int code, const char *format, va_list args) {
             // Acquire exit lock
-            std::lock_guard<std::mutex> lock(exit_mutex);
+            std::scoped_lock<std::mutex> lock(exit_mutex);
             
             Terminal::destroy();
             std::vfprintf(stderr, format, args);

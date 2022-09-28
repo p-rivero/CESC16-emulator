@@ -61,7 +61,7 @@ void Terminal::stop() {
     tcsetattr(0, TCSANOW, &shell_settings);
     
     // Call the predefined SIGTSTP handler
-    (ncurses_stop_handler)(SIGTSTP);
+    ncurses_stop_handler(SIGTSTP);
 }
 void Terminal::resume() {
     // TODO: This remains broken, try to fix it
@@ -203,8 +203,8 @@ void Terminal::display_status(word PC, bool user_mode, const StatusFlags& flg, R
     wprintw(stat_screen, "\n Mode: %s\n", user_mode ? "RAM" : "ROM");
     wprintw(stat_screen, " Flags: %c%c%c%c\n\n", flg.Z?'Z':'.', flg.C?'C':'.', flg.V?'V':'.', flg.S?'S':'.');
 
-    for (uint i = 1; i < 16; i++)
-        wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i], word(regs[i]));
+    for (byte i = 1; i < 16; i++)
+        wprintw(stat_screen, " %s = 0x%04X\n", regs.ABI_names[i].c_str(), word(regs[i]));
 
     if (Globals::is_paused) wprintw(stat_screen, "\n [PAUSED]\n F5: Resume\n F6: Step\n F7: Cycle = 0\n");
     else wprintw(stat_screen, "\n\n\n\n\n");
@@ -269,7 +269,9 @@ void Terminal::update_input() {
             case KEY_F(12): input_buffer.push(0x1A); break;
             
             // Else, check that all special keys have been catched and send regular input
-            default: if (is_regular_char(ch)) input_buffer.push(ch); break;
+            default:
+                if (is_regular_char(ch)) input_buffer.push(byte(ch));
+                break;
         }
     }
 }
@@ -344,6 +346,6 @@ void Terminal::set_color(color c, int row) {
     }
 }
 
-void Terminal::set_cursor_blink(bool blink) {
+void Terminal::set_cursor_blink(bool blink) const {
     curs_set(blink);
 }
