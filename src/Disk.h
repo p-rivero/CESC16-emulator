@@ -4,22 +4,30 @@
 #include "Memory.h"
 
 #include <string>
+#include <fstream>
+
 
 class DiskController {
 private:
+    // Communication with CPU
     volatile word *input;
     volatile word *output;
-    std::string currentFile; // 8.3 filename (8 char long name + 3 char long extension)
-    std::string currentDir;
+    
+    std::string currentFile = ""; // 8.3 filename (8 char long name + 3 char long extension)
+    int currentDepth = 0;
     bool file_is_open = false;
+    std::fstream file; // Actual file used for IO
+    byte buf[0x10000];
     
     word read();
     void write(word data);
     void clear();
     
     void expectAck();
-    void writeByteStream(byte *buffer, int length);
-    void readByteStream(byte *buffer, int length);
+    int readByteStream(byte *buffer, int size);
+    void writeByteStream(const byte *buffer, int length);
+    std::string readString();
+    void writeString(const std::string &str);
     
     inline void checkFileIsOpen(std::string funct);
     inline void checkSetFileName(std::string funct);
@@ -39,7 +47,7 @@ private:
     
     
 public:
-    DiskController(volatile word *input_reg, volatile word *output_reg);
+    DiskController(volatile word *input_reg, volatile word *output_reg, const std::string& root_directory);
     void main_loop();
 };
 
