@@ -6,12 +6,12 @@
 
 // WRITE
 MemCell& MemCell::operator=(word rhs) {
-    val_ = rhs;
+    storedValue = rhs;
     return *this;
 }
 // READ
 MemCell::operator word() const {
-    return val_;
+    return storedValue;
 }
 
 
@@ -23,8 +23,9 @@ Reg::Reg(bool is_zero) : zero_reg(is_zero) { }
 // WRITE to register
 MemCell& Reg::operator=(word rhs) {
     // Register zero is non-writable
-    if (!zero_reg) val_ = rhs;
-    return *this;
+    if (zero_reg) return *this;
+    // Else, call base class
+    return MemCell::operator=(rhs);
 }
 
 
@@ -33,23 +34,23 @@ MemCell& Reg::operator=(word rhs) {
 
 // When initializing the register file, set index 0 as the zero register
 Regfile::Regfile() {
-    Data[0] = Reg(true);
+    registers[0] = Reg(true);
 }
 Reg& Regfile::ABI_A0() {
     const int ABI_A0_idx = 12;
     assert(ABI_names[ABI_A0_idx] == "a0");
-    return Data[ABI_A0_idx];
+    return registers[ABI_A0_idx];
 }
 Reg& Regfile::operator[](byte addr) {
     if (addr >= REGFILE_SZ) throw EmulatorException("Invalid regfile access");
-    return Data[addr];
+    return registers[addr];
 }
 
 
 // GENERIC MEMORY
 
 MemCell& Mem::operator[](word addr) { 
-    return Data[addr];
+    return data[addr];
 }
 
 
@@ -63,7 +64,7 @@ using Rom = Mem;
 // RAM
 
 Ram::Ram(MemCell& p0, MemCell& p1, MemCell& p2, MemCell& p3) : 
-    Port0(&p0), Port1(&p1), Port2(&p2), Port3(&p3) { }
+    port0(&p0), port1(&p1), port2(&p2), port3(&p3) { }
     
 // Memory mapping of RAM and IO
 MemCell& Ram::operator[](word addr) { 
@@ -72,10 +73,10 @@ MemCell& Ram::operator[](word addr) {
 
     // FF00-FFFF: MMIO
     switch (addr) {
-        case 0xFF00: return *Port0;
-        case 0xFF40: return *Port1;
-        case 0xFF80: return *Port2;
-        case 0xFFC0: return *Port3;
+        case 0xFF00: return *port0;
+        case 0xFF40: return *port1;
+        case 0xFF80: return *port2;
+        case 0xFFC0: return *port3;
         default: throw EmulatorException("Invalid memory access");
     }
 }

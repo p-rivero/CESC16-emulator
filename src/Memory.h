@@ -6,8 +6,8 @@
 #include <array>
 
 class MemCell {
-protected:
-    word val_ = 0;
+private:
+    word storedValue = 0;
 
 public:
     virtual ~MemCell() = default;
@@ -42,7 +42,7 @@ struct StatusFlags {
 class Regfile {
 private:
     const static byte REGFILE_SZ = 16;
-    std::array<Reg,REGFILE_SZ> Data;
+    std::array<Reg,REGFILE_SZ> registers;
 
 public:
     const std::array<std::string,REGFILE_SZ> ABI_names = {"zero", "sp", "bp", "s0", "s1", "s2", "s3", "s4",
@@ -57,7 +57,7 @@ public:
 class Mem {
 private:
     const static uint32_t MEM_SZ = 0x10000;
-    std::array<MemCell,MEM_SZ> Data;
+    std::array<MemCell,MEM_SZ> data;
 
 public:
     virtual ~Mem() = default;
@@ -71,10 +71,10 @@ using Rom = Mem;
 class Ram : public Mem {
 private:
     // Pointers to the 4 memory-mapped GPIO ports
-    MemCell *Port0;
-    MemCell *Port1;
-    MemCell *Port2;
-    MemCell *Port3;
+    MemCell *port0;
+    MemCell *port1;
+    MemCell *port2;
+    MemCell *port3;
 
 public:
     Ram(MemCell& p0, MemCell& p1, MemCell& p2, MemCell& p3);

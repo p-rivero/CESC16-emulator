@@ -2,7 +2,6 @@
 
 #include "Globals.h"
 #include "Memory.h"
-#include "Terminal.h"
 #include "Keyboard.h"
 #include "Display.h"
 #include "Timer.h"
@@ -30,9 +29,6 @@ private:
 
     // Store how many cycles the last 500 instructions took in order to compute CPI metrics
     ArithmeticMean<int> cpi_mean = ArithmeticMean<int>(500);
-
-    // Direct access to the terminal for calling update()
-    Terminal *terminal;
 
     // Input terminal
     Keyboard keyboard;
@@ -127,10 +123,6 @@ private:
 public:
     const static word MSB = 0x8000;
     const static word MAX_TIMESTEPS = 16;
-
-    CPU() {
-        terminal = Terminal::initialize();
-    }
 
     // Reset CPU
     void reset();

@@ -14,13 +14,13 @@
 class Terminal {
 
 private:
-    static Terminal *term;
+    static Terminal instance;
     WINDOW *mainwin;
     WINDOW *term_screen;
     WINDOW *stat_screen;
     WINDOW *perf_screen;
     sighandler_t ncurses_stop_handler; // Current SIGTSTP handler, implemented by ncurses
-    static termios shell_settings; // Terminal settings received from shell
+    termios shell_settings; // Terminal settings received from shell
     termios curses_settings; // Terminal settings after setting up ncurses windows
     std::queue<byte> input_buffer; // Buffer for the received keystrokes
     std::ofstream output_file;  // If -o is used, all CPU outputs are stored in output_file
@@ -28,7 +28,6 @@ private:
     static const int COLS_STATUS = 15;
 
     Terminal();
-    ~Terminal();
     // Utilities
     static void draw_rectangle(int y1, int x1, int y2, int x2, const char *text);
     static void sig_handler(int sig);
@@ -46,8 +45,7 @@ public:
     enum color { BLACK=1, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE };
     enum print_mode { BOTH, ONLY_SCREEN, ONLY_FILE };
     
-    static Terminal *initialize();
-    static void destroy();
+    static Terminal *get_instance();
     
     // Output a char
     void print(char c, print_mode mode = BOTH);
@@ -55,6 +53,8 @@ public:
     void display_status(word PC, bool user_mode, const StatusFlags& flg, Regfile& regs, double CPI);
     // Flush the output stream
     void flush();
+    // Destroy the terminal. This function should be called before exiting the program
+    void destroy();
     
     // Process ncurses key queue until it's empty (called periodically)
     void update_input();

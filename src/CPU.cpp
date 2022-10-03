@@ -626,6 +626,7 @@ int32_t CPU::execute(int32_t cycles) {
 // Called at regular intervals for updating the UI and getting input
 void CPU::update() {
     // Flush the output stream
+    Terminal *terminal = Terminal::get_instance();
     terminal->display_status(PC, user_mode, Flags, regs, cpi_mean.getCurrentMean());
     terminal->flush();
 

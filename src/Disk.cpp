@@ -66,11 +66,12 @@ word DiskController::read() const {
 
 // Write to the output register
 void DiskController::write(word data) {
-    // Acquire exit lock to prevent segfault when the main thread is exiting
-    std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
-    
     assert(data <= 0x1FF);
-    *output = data;
+    {
+        // Acquire exit lock to prevent segfault when the main thread is exiting
+        std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
+        *output = data;
+    }
     expectAck();
 }
 
@@ -86,26 +87,25 @@ void DiskController::clear() {
 // Helper functions
 
 // The CPU should send an Ack next
-void DiskController::expectAck() {
+void DiskController::expectAck() const {
     word in = read();
     if (in != Disk::ACK)
         throw DiskControllerException("Expected an ACK");
 }
 
 // Returns the number of read bytes
-int DiskController::readByteStream(byte *buffer, int size) {
-    int i = 0;
-    while (true) {
-        if (i >= size) throw DiskControllerException("DiskController: Buffer overflow");
+size_t DiskController::readByteStream(buf_t& buffer) const {
+    for (size_t i = 0; i < buffer.size(); i++) {
         word data = read();
         // If an ACK is received, the stream is over
         if (data == Disk::ACK) return i;
-        buffer[i++] = data;
+        buffer[i] = byte(data);
     }
+    throw DiskControllerException("DiskController: Buffer overflow");
 }
 
 // Write n byes from buffer
-void DiskController::writeByteStream(const byte *buffer, int n) {
+void DiskController::writeByteStream(const buf_t& buffer, size_t n) {
     for (int i = 0; i < n; i++) {
         write(buffer[i]);
     }
@@ -114,15 +114,20 @@ void DiskController::writeByteStream(const byte *buffer, int n) {
 }
 
 std::string DiskController::readString() {
-    int n = readByteStream(buf, sizeof(buf));
-    for (int i = 0; i < n; i++) {
-        if (buf[i] >= 0x80) throw DiskControllerException("Non-ascii character received");
+    size_t n = readByteStream(io_buffer);
+    for (size_t i = 0; i < n; i++) {
+        if (io_buffer[i] >= 0x80) throw DiskControllerException("Non-ascii character received: " + std::to_string(io_buffer[i]));
     }
-    return std::string((char*) buf, n);
+    return std::string((char*) io_buffer.begin(), n);
 }
 
 void DiskController::writeString(const std::string &str) {
-    writeByteStream((const byte*) str.c_str(), str.length());
+    // Copy the string to the IO buffer
+    for (int i = 0; i < str.length(); i++) {
+        if (str[i] >= 0x80) throw DiskControllerException("Non-ascii character in string: " + str);
+        io_buffer[i] = str[i];
+    }
+    writeByteStream(io_buffer, str.length());
 }
 
 void DiskController::checkFileIsOpen(const std::string& funct) const {
@@ -178,22 +183,22 @@ void DiskController::readFile() {
     expectAck();
     
     // Read from file
-    file.read((char*)buf, size);
+    file.read((char*)io_buffer.begin(), size);
     // Update the write cursor
     std::streampos read_pos = file.tellg();
     file.seekp(read_pos);
     
     // Send to CPU
-    writeByteStream(buf, size);
+    writeByteStream(io_buffer, size);
 }
 
 void DiskController::writeFile() {
     checkFileIsOpen("writeFile");
     
     // Get data
-    int n = readByteStream(buf, sizeof(buf));
+    size_t n = readByteStream(io_buffer);
     // Write data
-    file.write((char*)buf, n);
+    file.write((char*)io_buffer.begin(), n);
     // Update the read cursor
     std::streampos write_pos = file.tellp();
     file.seekg(write_pos);

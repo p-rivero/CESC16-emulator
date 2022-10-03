@@ -14,18 +14,18 @@ private:
     volatile word *output;
     
     std::string currentFile = ""; // 8.3 filename (8 char long name + 3 char long extension)
-    int currentDepth = 0;
     bool file_is_open = false;
     std::fstream file; // Actual file used for IO
-    byte buf[0x10000];
+    using buf_t = std::array<byte, 0x10000>;
+    buf_t io_buffer; // Buffer for file IO
     
     word read() const;
     void write(word data);
     void clear();
     
-    void expectAck();
-    int readByteStream(byte *buffer, int size);
-    void writeByteStream(const byte *buffer, int length);
+    void expectAck() const;
+    size_t readByteStream(buf_t& buffer) const;
+    void writeByteStream(const buf_t& buffer, size_t length);
     std::string readString();
     void writeString(const std::string &str);
     

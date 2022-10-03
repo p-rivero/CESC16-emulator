@@ -9,7 +9,7 @@
 int Globals::terminal_delay = 0; // In real hardware this would be 32 microseconds
 
 Display::Display() {
-    term = Terminal::initialize();
+    term = Terminal::get_instance();
     // Initialize color lines to all white
     for (Terminal::color& c : cram) c = Terminal::color::WHITE;
 }

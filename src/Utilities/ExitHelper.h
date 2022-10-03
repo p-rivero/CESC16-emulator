@@ -14,7 +14,7 @@ namespace ExitHelper {
             // Acquire exit lock
             std::scoped_lock<std::mutex> lock(exit_mutex);
             
-            Terminal::destroy();
+            Terminal::get_instance()->destroy();
             std::vfprintf(stderr, format, args);
             std::exit(code);
         }

@@ -4,27 +4,10 @@
 
 #include <sys/ioctl.h>
 
-Terminal *Terminal::term = nullptr;
-termios Terminal::shell_settings;
+Terminal Terminal::instance = Terminal();
 
-Terminal *Terminal::initialize() {
-    if (term == nullptr) {
-        // Make sure window is big enough
-        size_check();
-        term = new Terminal;
-    }
-    
-    return term;
-}
-
-void Terminal::destroy() {
-    if (term != nullptr) {
-        term->flush(); // Discard any buffered outputs
-        delete term;
-    }
-    // Restore correct settings for shell
-    tcsetattr(0, TCSANOW, &shell_settings);
-    term = nullptr;
+Terminal *Terminal::get_instance() {
+    return &instance;
 }
 
 void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title) {
@@ -41,8 +24,8 @@ void Terminal::draw_rectangle(int y1, int x1, int y2, int x2, const char *title)
 
 void Terminal::sig_handler(int sig) { 
     if (sig == SIGWINCH) size_check();
-    else if (sig == SIGCONT) term->resume();
-    else if (sig == SIGTSTP) term->stop();
+    else if (sig == SIGCONT) instance.resume();
+    else if (sig == SIGTSTP) instance.stop();
     else ExitHelper::error("Error: Unknown signal received\n");
 }
 
@@ -84,13 +67,19 @@ Terminal::Terminal(){
     }
 }
 
-Terminal::~Terminal(){
+void Terminal::destroy() {
+    // Discard any buffered outputs
+    flush();
+    
     if (!Globals::silent_flg) {
         cleanup_ncurses();
     }
     if (Globals::out_file) {
         output_file.close();
     }
+    
+    // Restore correct settings for shell
+    tcsetattr(0, TCSANOW, &shell_settings);
 }
 
 void Terminal::init_ncurses() {

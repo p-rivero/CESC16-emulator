@@ -8,7 +8,7 @@
 int Globals::keyboard_delay = 0;
 
 Keyboard::Keyboard() {
-    term = Terminal::initialize();
+    term = Terminal::get_instance();
 }
 
 // WRITE
