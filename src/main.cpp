@@ -78,8 +78,7 @@ int main (int argc, char **argv) {
             break;
 
         case 'h':
-            print_help(argv[0]);    // Print help
-            break;
+            print_help(argv[0]);    // Print help and exit
             
         case 'k':   // Set keyboard delay
             Globals::keyboard_delay = atoi(optarg);

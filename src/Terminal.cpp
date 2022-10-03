@@ -189,7 +189,6 @@ void Terminal::print(char c, print_mode mode) {
     
     default:
         ExitHelper::error("Invalid print mode: %d\n", int(mode));
-        break;
     }
 }
 

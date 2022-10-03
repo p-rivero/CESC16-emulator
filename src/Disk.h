@@ -5,13 +5,14 @@
 
 #include <string>
 #include <fstream>
+#include <atomic>
 
 
 class DiskController {
 private:
     // Communication with CPU
-    volatile word *input;
-    volatile word *output;
+    std::atomic<word> * const input;
+    std::atomic<word> * const output;
     
     std::string currentFile = ""; // 8.3 filename (8 char long name + 3 char long extension)
     bool file_is_open = false;
@@ -47,7 +48,7 @@ private:
     
     
 public:
-    DiskController(volatile word *input_reg, volatile word *output_reg, const std::string& root_directory);
+    DiskController(std::atomic<word> *input_reg, std::atomic<word> *output_reg, const std::string& root_directory);
     [[noreturn]] void main_loop();
 };
 
@@ -55,8 +56,8 @@ public:
 
 class Disk : public MemCell {
 private:
-    volatile word input_reg = 0;
-    volatile word output_reg = 0;
+    std::atomic<word> input_reg = 0;
+    std::atomic<word> output_reg = 0;
     
 public:
     static const int BUSY_BIT = 1 << 9;

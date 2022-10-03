@@ -257,7 +257,7 @@ MemCell& Display::operator=(word rhs) {
             std::this_thread::sleep_for(std::chrono::microseconds(Globals::terminal_delay));
             
             // Acquire exit lock to prevent segfault when the main thread is exiting
-            std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
+            std::scoped_lock<std::mutex> lock(ExitHelper::get_exit_mutex());
             
             busy_flag = 0;
         }).detach();

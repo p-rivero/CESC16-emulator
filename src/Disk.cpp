@@ -13,7 +13,7 @@ std::string Globals::disk_root_dir = "";
 
 // DISK CONTROLLER
 
-DiskController::DiskController(volatile word *input_reg, volatile word *output_reg, const std::string& root_directory) : input(input_reg), output(output_reg) {
+DiskController::DiskController(std::atomic<word> *input_reg, std::atomic<word> *output_reg, const std::string& root_directory) : input(input_reg), output(output_reg) {
     assert(input_reg != nullptr);
     assert(output_reg != nullptr);
     
@@ -54,7 +54,7 @@ word DiskController::read() const {
     // Poll busy bit until an input is detected
     while ((data & Disk::BUSY_BIT) == 0) {
         // Acquire exit lock to prevent segfault when the main thread is exiting
-        std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
+        std::scoped_lock<std::mutex> lock(ExitHelper::get_exit_mutex());
         
         data = *input;
     }
@@ -69,7 +69,7 @@ void DiskController::write(word data) {
     assert(data <= 0x1FF);
     {
         // Acquire exit lock to prevent segfault when the main thread is exiting
-        std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
+        std::scoped_lock<std::mutex> lock(ExitHelper::get_exit_mutex());
         *output = data;
     }
     expectAck();
@@ -78,7 +78,7 @@ void DiskController::write(word data) {
 // Clear the input register
 void DiskController::clear() {
     // Acquire exit lock to prevent segfault when the main thread is exiting
-    std::scoped_lock<std::mutex> lock(ExitHelper::exit_mutex);
+    std::scoped_lock<std::mutex> lock(ExitHelper::get_exit_mutex());
     
     *input = 0;
 }

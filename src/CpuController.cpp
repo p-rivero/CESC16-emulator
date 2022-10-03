@@ -65,14 +65,13 @@ void CpuController::call_update() {
 // Execute the program
 [[noreturn]] void CpuController::execute() const {
     // Schedule timer for calling update() every 30 milliseconds
-    // Since execute() does not return, this thread will run forever
-    auto update_thread = std::thread([]() {
+    std::thread([]() {
         while (true) {
             auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(30);
             call_update();
             std::this_thread::sleep_until(x);
         }
-    });
+    }).detach();
 
     // Give some time for the ncurses window to initialize.
     // Otherwise, if the program sends outputs too soon, the first chars wouldn't be displayed
