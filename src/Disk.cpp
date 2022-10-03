@@ -23,7 +23,7 @@ DiskController::DiskController(volatile word *input_reg, volatile word *output_r
     }
 }
 
-void DiskController::main_loop() {
+[[noreturn]] void DiskController::main_loop() {
     while (true) {
         switch (word cmd = read(); cmd) {
             case Disk::CMD_setFileName: setFileName(); break;

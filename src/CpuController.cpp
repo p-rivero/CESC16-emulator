@@ -63,7 +63,7 @@ void CpuController::call_update() {
 
 
 // Execute the program
-void CpuController::execute() const {
+[[noreturn]] void CpuController::execute() const {
     // Schedule timer for calling update() every 30 milliseconds
     // Since execute() does not return, this thread will run forever
     auto update_thread = std::thread([]() {
@@ -93,7 +93,7 @@ void CpuController::execute() const {
 }
 
 // Execute the program at high clock speeds
-void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) const {
+[[noreturn]] void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) const {
     int32_t extra_cycles = 0;
     while (true) {
         // Wait until the program is unpaused
@@ -116,7 +116,7 @@ void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) const {
 }
 
 // Execute the program at low clock speeds
-void CpuController::run_slow() const {
+[[noreturn]] void CpuController::run_slow() const {
     while (true) {
         // gcc with -O2 will "optimize" this to an endless loop unless is_paused is marked as volatile
         while (Globals::is_paused);

@@ -14,7 +14,7 @@ std::vector<word> Globals::breakpoints;
 std::vector<word> Globals::exitpoints;
 
 
-void print_help(const char* prog_name) {
+[[noreturn]] void print_help(const char* prog_name) {
     printf("CESC16 EMULATOR\n");
     printf("       Run binary files for the CESC16 architecture\n");
     printf("\nUSAGE:\n");

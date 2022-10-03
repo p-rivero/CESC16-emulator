@@ -14,13 +14,13 @@ private:
 
     static void sig_handler(int sig);
     static void call_update();
-    void run_fast(int32_t CYCLES, int32_t sleep_us) const;
-    void run_slow() const;
+    [[noreturn]] void run_fast(int32_t CYCLES, int32_t sleep_us) const;
+    [[noreturn]] void run_slow() const;
 
 
 public:
     CpuController();
     
     void read_ROM_file(const char* filename) const;
-    void execute() const;
+    [[noreturn]] void execute() const;
 };

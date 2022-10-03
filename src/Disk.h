@@ -48,7 +48,7 @@ private:
     
 public:
     DiskController(volatile word *input_reg, volatile word *output_reg, const std::string& root_directory);
-    void main_loop();
+    [[noreturn]] void main_loop();
 };
 
 
