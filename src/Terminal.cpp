@@ -1,6 +1,7 @@
 #include "Terminal.h"
 #include "Utilities/Assert.h"
 #include "Utilities/ExitHelper.h"
+#include "CpuController.h"
 
 #include <sys/ioctl.h>
 
@@ -42,16 +43,20 @@ void Terminal::stop() {
     tcgetattr(0, &curses_settings);
     // Restore correct settings for shell
     tcsetattr(0, TCSANOW, &shell_settings);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
     // Call the predefined SIGTSTP handler
     ncurses_stop_handler(SIGTSTP);
 }
 void Terminal::resume() {
-    // TODO: This remains broken, try to fix it
-    // Restore correct settings for ncurses
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     tcsetattr(0, TCSANOW, &curses_settings);
+
+    // Redraw the screen
+    clear();
     redrawwin(mainwin);
-    tcsetattr(0, TCSADRAIN, &curses_settings);
+    redrawwin(term_screen);
+    draw_frames();
 }
 
 
@@ -139,6 +144,10 @@ void Terminal::init_ncurses() {
     init_pair(color::CYAN, COLOR_CYAN, -1);
     init_pair(color::WHITE, COLOR_WHITE, -1);
 
+    draw_frames();
+}
+
+void Terminal::draw_frames() const {
     // Draw frames around subwindows
     draw_rectangle(0, 0, ROWS+1, COLS+1, "Terminal output");
     draw_rectangle(0, COLS+3, ROWS+1, COLS+COLS_STATUS+4, "Status");

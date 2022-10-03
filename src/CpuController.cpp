@@ -96,21 +96,22 @@ void CpuController::execute() const {
 void CpuController::run_fast(int32_t CYCLES, int32_t sleep_us) const {
     int32_t extra_cycles = 0;
     while (true) {
-        // gcc with -O2 will "optimize" this to an endless loop unless is_paused is marked as volatile
+        // Wait until the program is unpaused
         while (Globals::is_paused);
 
-        auto x = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
-        // Store the used extra cycles and subtract them from the next execution
+        
+        auto end_wait = std::chrono::steady_clock::now() + std::chrono::microseconds(sleep_us);
         {
             std::scoped_lock<std::mutex> lock(update_mutex);
+            // Store the used extra cycles and subtract them from the next execution
             extra_cycles = cpu.execute(CYCLES - extra_cycles);
         }
 
-        if (std::chrono::steady_clock::now() > x) {
+        if (std::chrono::steady_clock::now() > end_wait) {
             ExitHelper::error("Target clock frequency too high for real-time emulation, try a slower clock\n");
         }
         
-        std::this_thread::sleep_until(x);
+        std::this_thread::sleep_until(end_wait);
     }
 }
 

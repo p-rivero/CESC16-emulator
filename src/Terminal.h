@@ -34,6 +34,7 @@ private:
     static void size_check();
     static bool is_regular_char(int ch);
     void init_ncurses();
+    void draw_frames() const;
     void cleanup_ncurses();
     void stop();
     void resume();
